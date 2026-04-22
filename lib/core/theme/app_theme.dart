@@ -31,6 +31,7 @@ class AppTheme {
 
       // 하단 네비게이션 바 기본 스타일
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
         selectedItemColor: primaryColor, // 선택된 탭은 다크 그린
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,

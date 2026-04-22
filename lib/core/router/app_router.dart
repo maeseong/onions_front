@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/home/screens/home_screen.dart';
 
 // 라우터 설정: 화면 이동 규칙
 final GoRouter appRouter = GoRouter(
@@ -10,6 +11,7 @@ final GoRouter appRouter = GoRouter(
         return MainNavigationScaffold(child: child);
       },
       routes: [
+        // 이제 '/home'으로 이동하면 우리가 새로 만든 멋진 홈 화면이 나옵니다.
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/ai', builder: (context, state) => const AiScreen()),
         GoRoute(path: '/schedule', builder: (context, state) => const ScheduleScreen()),
@@ -65,8 +67,7 @@ class MainNavigationScaffold extends StatelessWidget {
   }
 }
 
-// 임시 화면: 나중에 features 폴더로 각각 분리할 예정
-class HomeScreen extends StatelessWidget { const HomeScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('홈 화면', style: TextStyle(fontSize: 24)))); }
+// 나머지 임시 화면들 (나중에 features 폴더로 각각 분리할 때 하나씩 지워나갈 예정입니다)
 class AiScreen extends StatelessWidget { const AiScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('AI 스펙 진단', style: TextStyle(fontSize: 24)))); }
 class ScheduleScreen extends StatelessWidget { const ScheduleScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('일정', style: TextStyle(fontSize: 24)))); }
 class CompanyScreen extends StatelessWidget { const CompanyScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('기업 추천', style: TextStyle(fontSize: 24)))); }
