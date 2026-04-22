@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/schedule/screens/schedule_screen.dart';
 
 // 라우터 설정: 화면 이동 규칙
 final GoRouter appRouter = GoRouter(
@@ -69,6 +70,5 @@ class MainNavigationScaffold extends StatelessWidget {
 
 // 나머지 임시 화면들 (나중에 features 폴더로 각각 분리할 때 하나씩 지워나갈 예정입니다)
 class AiScreen extends StatelessWidget { const AiScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('AI 스펙 진단', style: TextStyle(fontSize: 24)))); }
-class ScheduleScreen extends StatelessWidget { const ScheduleScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('일정', style: TextStyle(fontSize: 24)))); }
 class CompanyScreen extends StatelessWidget { const CompanyScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('기업 추천', style: TextStyle(fontSize: 24)))); }
 class ProfileScreen extends StatelessWidget { const ProfileScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('프로필', style: TextStyle(fontSize: 24)))); }
