@@ -7,7 +7,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       primaryColor: primaryColor,
-      scaffoldBackgroundColor: const Color(0xFFF8F9FA), // 연한 회백색 배경
+      scaffoldBackgroundColor: const Color(0xFFF8F9FA),
 
       // 앱 상단 바 기본 스타일
       appBarTheme: const AppBarTheme(
@@ -17,7 +17,6 @@ class AppTheme {
         titleTextStyle: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
       ),
 
-      // 둥근 형태의 메인 버튼 기본 스타일
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,

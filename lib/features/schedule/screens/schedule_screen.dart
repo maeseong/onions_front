@@ -37,15 +37,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     ];
   }
 
-  // D-Day 색상 규칙
+  // d-day 색깔 규칙
   Color _getDDayColor(DateTime targetDate) {
     final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
     final diff = target.difference(today).inDays;
 
-    if (diff <= 9) return const Color(0xFFEF5350); // 0~9일: 빨강
-    if (diff <= 19) return const Color(0xFFFFB300); // 10~19일: 노랑
-    return const Color(0xFF61B099); // 20일 이상: 초록
+    if (diff <= 9) return const Color(0xFFEF5350); // 0~9일: 빨간색
+    if (diff <= 19) return const Color(0xFFFFB300); // 10~19일: 노란색
+    return const Color(0xFF61B099); // 20일 이상: 초록색
   }
 
   // 해당 날짜의 일정 필터링
@@ -155,17 +155,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       },
                       
                       defaultBuilder: (context, day, focusedDay) {
-                        Color textColor = Colors.black87; // 평일 기본색
+                        Color textColor = Colors.black87;
                         if (day.weekday == DateTime.sunday) {
-                          textColor = const Color(0xFFEF5350); // 일요일 빨강
+                          textColor = const Color(0xFFEF5350);
                         } else if (day.weekday == DateTime.saturday) {
-                          textColor = const Color(0xFF42A5F5); // 토요일 파랑
+                          textColor = const Color(0xFF42A5F5);
                         }
                         return _buildCalendarDay(day, textColor);
                       },
                       
                       outsideBuilder: (context, day, focusedDay) { 
-                        Color textColor = Colors.grey[400]!; // 기본 회색
+                        Color textColor = Colors.grey[400]!;
                         if (day.weekday == DateTime.sunday) {
                           textColor = const Color(0xFFEF5350).withOpacity(0.4);
                         } else if (day.weekday == DateTime.saturday) {
@@ -239,7 +239,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget _buildEventCard(ScheduleEvent event) {
     final Color dDayColor = _getDDayColor(event.date); 
     
-    // D-Day 계산
+    // d-day 계산
     final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     final target = DateTime(event.date.year, event.date.month, event.date.day);
     final diff = target.difference(today).inDays;

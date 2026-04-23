@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'core/router/app_router.dart'; // 라우터 불러오기
-
+import 'core/router/app_router.dart';
 void main() {
   runApp(
     const ProviderScope(
@@ -16,7 +15,7 @@ class SpecCheckApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router( // 기존 MaterialApp을 MaterialApp.router로 변경!
+    return MaterialApp.router(
       title: 'SpecCheck',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

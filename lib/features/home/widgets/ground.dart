@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 class GroundPlot extends StatelessWidget {
   final double width;
   final double height;
-  final Color? baseColor; // 측면 흙 색상
-  final Color? surfaceColor; // 상단 잔디 색상 (기본값: #61B099)
+  final Color? baseColor; // 옆면 흙 색상
+  final Color? surfaceColor; // 상단 잔디 색상
   final double elevation; // 입체감 두께
 
   const GroundPlot({
@@ -18,7 +18,6 @@ class GroundPlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 지정된 색상이 없으면 앱의 메인 컬러(#61B099)를 가져옵니다.
     final Color effectiveSurfaceColor = surfaceColor ?? const Color(0xFF61B099);
     final Color effectiveBaseColor = baseColor ?? const Color(0xFF795548); // 기본 흙색
 
@@ -58,7 +57,7 @@ class _GroundPainter extends CustomPainter {
       ..color = surfaceColor
       ..style = PaintingStyle.fill;
 
-    // 측면 흙 (그림자 효과를 위해 명도 조절)
+    // 옆면 흙
     final Paint sideDarkPaint = Paint()
       ..color = baseColor.withOpacity(0.9)
       ..style = PaintingStyle.fill;
@@ -72,7 +71,7 @@ class _GroundPainter extends CustomPainter {
     final Offset left = Offset(0, height / 2);
     final Offset right = Offset(size.width, height / 2);
 
-    // 1. 상단 잔디면
+    // 상단 잔디면
     final Path surfacePath = Path()
       ..moveTo(top.dx, top.dy)
       ..lineTo(right.dx, right.dy)
@@ -81,7 +80,7 @@ class _GroundPainter extends CustomPainter {
       ..close();
     canvas.drawPath(surfacePath, surfacePaint);
 
-    // 2. 오른쪽 측면
+    // 오른쪽 측면
     final Path rightSide = Path()
       ..moveTo(right.dx, right.dy)
       ..lineTo(bottom.dx, bottom.dy)
@@ -90,7 +89,7 @@ class _GroundPainter extends CustomPainter {
       ..close();
     canvas.drawPath(rightSide, sideDarkPaint);
 
-    // 3. 왼쪽 측면
+    // 왼쪽 측면
     final Path leftSide = Path()
       ..moveTo(bottom.dx, bottom.dy)
       ..lineTo(left.dx, left.dy)
@@ -99,7 +98,6 @@ class _GroundPainter extends CustomPainter {
       ..close();
     canvas.drawPath(leftSide, sideLightPaint);
     
-    // 4. (디테일) 잔디 경계선에 아주 살짝 밝은 하이라이트 추가
     final Paint highlightPaint = Paint()
       ..color = Colors.white.withOpacity(0.1)
       ..style = PaintingStyle.stroke
