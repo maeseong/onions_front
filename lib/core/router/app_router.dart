@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/schedule/screens/schedule_screen.dart';
+import '../../features/ai_consulting/screens/ai_screen.dart';
+// ✂️ ai_chat_screen import 부분 삭제됨!
 
 // 라우터 설정: 화면 이동 규칙
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/home', // 앱을 켜면 가장 먼저 홈 화면이 나오게
+  initialLocation: '/home', 
   routes: [
-    ShellRoute( // 네비게이션 바를 유지한 채로 내부 화면만 갈아끼워주는 역할
+    ShellRoute( 
       builder: (context, state, child) {
         return MainNavigationScaffold(child: child);
       },
       routes: [
-        // 이제 '/home'으로 이동하면 우리가 새로 만든 멋진 홈 화면이 나옵니다.
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/ai', builder: (context, state) => const AiScreen()),
         GoRoute(path: '/schedule', builder: (context, state) => const ScheduleScreen()),
@@ -38,7 +39,6 @@ class MainNavigationScaffold extends StatelessWidget {
     return 0;
   }
 
-  // 탭을 눌렀을 때 해당 화면으로 이동시키는 함수
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0: context.go('/home'); break;
@@ -52,7 +52,7 @@ class MainNavigationScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child, // 5개 화면 중 하나가 들어감
+      body: child, 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
@@ -68,7 +68,6 @@ class MainNavigationScaffold extends StatelessWidget {
   }
 }
 
-// 나머지 임시 화면들 (나중에 features 폴더로 각각 분리할 때 하나씩 지워나갈 예정입니다)
-class AiScreen extends StatelessWidget { const AiScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('AI 스펙 진단', style: TextStyle(fontSize: 24)))); }
+// 나머지 임시 화면들
 class CompanyScreen extends StatelessWidget { const CompanyScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('기업 추천', style: TextStyle(fontSize: 24)))); }
 class ProfileScreen extends StatelessWidget { const ProfileScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('프로필', style: TextStyle(fontSize: 24)))); }

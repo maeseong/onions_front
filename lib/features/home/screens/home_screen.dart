@@ -60,9 +60,9 @@ class HomeScreen extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       height: 220,
-                      clipBehavior: Clip.antiAlias, // 모서리 둥글게 자르기
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1B2B22), // 짙은 초록색
+                        color: const Color(0xFF1B2B22),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Center(
