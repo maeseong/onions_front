@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-// 태그의 긍정(초록)/부정(빨강) 상태를 나누기 위한 모델
+// 색상 상태를 나누기 위한 모델
 class TagModel {
   final String text;
   final bool isPositive;
   TagModel(this.text, {this.isPositive = true});
 }
 
-// 피그마 디자인에 맞춘 데이터 모델
+// 데이터 모델
 class CompanyModel {
   final String logoText;
   final Color logoBgColor;
@@ -36,7 +36,7 @@ class CompanyScreen extends StatefulWidget {
 }
 
 class _CompanyScreenState extends State<CompanyScreen> {
-  // 피그마 스크린샷과 100% 동일한 더미 데이터 리스트
+  // 더미 데이터
   final List<CompanyModel> _companies = [
     CompanyModel(
       logoText: 'K',
@@ -81,7 +81,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
       name: '라인',
       description: '중견 · 개발 · 메신저',
       matchRate: 72,
-      tags: [TagModel('학점 우수'), TagModel('인턴 부족', isPositive: false)], // 부정 태그
+      tags: [TagModel('학점 우수'), TagModel('인턴 부족', isPositive: false)],
     ),
     CompanyModel(
       logoText: '당',
@@ -90,14 +90,14 @@ class _CompanyScreenState extends State<CompanyScreen> {
       name: '당근',
       description: '스타트업 · 개발 · 커뮤니티',
       matchRate: 65,
-      tags: [TagModel('성장 가능성'), TagModel('인턴 부족', isPositive: false)], // 부정 태그
+      tags: [TagModel('성장 가능성'), TagModel('인턴 부족', isPositive: false)],
     ),
   ];
 
   String _selectedFilter = '전체';
-  final Color primaryColor = const Color(0xFF61B099); // 피그마 메인 초록색
+  final Color primaryColor = const Color(0xFF61B099);
 
-  // 매칭률에 따라 색상을 반환하는 함수 (피그마 디자인 반영)
+  // 매칭률에 따라 색상을 반환
   Color _getMatchColor(int rate) {
     if (rate >= 80) return primaryColor; // 80% 이상: 초록
     if (rate >= 70) return const Color(0xFF42A5F5); // 70% 대: 파랑
@@ -117,7 +117,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 1. 필터 칩 영역 ---
+            // 필터 영역
             SizedBox(
               height: 40,
               child: ListView(
@@ -138,11 +138,11 @@ class _CompanyScreenState extends State<CompanyScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- 2. ⭐️ 크기를 줄인 대시보드 카드 ---
+            // 대시보드
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), // 상하 여백 축소
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: primaryColor,
                   borderRadius: BorderRadius.circular(20),
@@ -156,7 +156,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: const [
-                        Text('14', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)), // 폰트 크기 축소
+                        Text('14', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                         SizedBox(width: 8),
                         Text('개 기업', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                       ],
@@ -164,7 +164,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                     const SizedBox(height: 16),
                     const Divider(color: Colors.white30, thickness: 1, height: 1),
                     const SizedBox(height: 12),
-                    // 3등분 통계
+                    // 통계
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -181,7 +181,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
             ),
             const SizedBox(height: 32),
 
-            // --- 3. 리스트 헤더 ---
+            // 리스트 헤더
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Row(
@@ -200,7 +200,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- 4. 기업 카드 리스트 ---
+            // 기업 카드 리스트
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -237,7 +237,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
     );
   }
 
-  // 대시보드 내부의 통계 아이템
+  // 대시보드 내부 통계
   Widget _buildStatItem(String number, String label) {
     return Column(
       children: [
@@ -248,7 +248,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
     );
   }
 
-  // ⭐️ 피그마와 레이아웃이 완벽하게 일치하는 개별 기업 카드
+  // 개별 기업 카드
   Widget _buildCompanyCard(CompanyModel company) {
     final matchColor = _getMatchColor(company.matchRate); // 매칭률별 컬러 추출
 
@@ -278,7 +278,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // 우측: 텍스트 및 프로그레스 바 영역 (로고 우측으로 들여쓰기 됨)
+          // 우측: 텍스트 및 프로그레스 바 영역
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +323,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 하단 매칭률 텍스트 & 바
+                // 하단 매칭률 텍스트, 바
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -337,7 +337,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                   child: LinearProgressIndicator(
                     value: company.matchRate / 100,
                     backgroundColor: Colors.grey[200],
-                    color: matchColor, // 💡 매칭률에 따라 초록/파랑/주황색으로 변함
+                    color: matchColor, // 매칭률에 따라 초록/파랑/주황색으로 변함
                     minHeight: 6,
                   ),
                 ),

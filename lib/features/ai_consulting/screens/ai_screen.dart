@@ -56,7 +56,7 @@ class AiScreen extends StatelessWidget {
                     children: [
                       Expanded(child: _buildSpecItem('📜', '자격증', '정보처리기사', false)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildSpecItem('💼', '인턴십', '경험 없음', true)), // 부족한 스펙은 빨간색으로
+                      Expanded(child: _buildSpecItem('💼', '인턴십', '경험 없음', true)),
                     ],
                   ),
                 ],
