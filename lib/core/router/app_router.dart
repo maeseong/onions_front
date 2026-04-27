@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/schedule/screens/schedule_screen.dart';
 import '../../features/ai_consulting/screens/ai_screen.dart';
-// ✂️ ai_chat_screen import 부분 삭제됨!
+import '../../features/company/screens/company_screen.dart';
 
 // 라우터 설정: 화면 이동 규칙
 final GoRouter appRouter = GoRouter(
@@ -69,5 +69,4 @@ class MainNavigationScaffold extends StatelessWidget {
 }
 
 // 나머지 임시 화면들
-class CompanyScreen extends StatelessWidget { const CompanyScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('기업 추천', style: TextStyle(fontSize: 24)))); }
 class ProfileScreen extends StatelessWidget { const ProfileScreen({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('프로필', style: TextStyle(fontSize: 24)))); }
