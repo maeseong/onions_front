@@ -5,7 +5,6 @@ class AchievementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 수정 사항: 하드코딩된 색상 대신 Theme에서 primaryColor를 가져오도록 변경
     final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
