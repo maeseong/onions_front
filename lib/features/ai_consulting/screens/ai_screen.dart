@@ -68,18 +68,10 @@ class AiScreen extends StatelessWidget {
             // 챗봇 진입 버튼(현재는 버튼만 구현된 상태)
             SizedBox(
               width: double.infinity,
-              height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  // 챗봇 화면 이동 로직 추가 예정
-                  print('미완성');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                ),
-                child: const Text('AI와 스펙 진단하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                onPressed: () { print('미완성'); },
+                style: ElevatedButton.styleFrom(elevation: 0),
+                child: const Text('AI와 스펙 진단하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

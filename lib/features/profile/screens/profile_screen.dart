@@ -6,7 +6,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF61B099);
+    final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -98,7 +98,13 @@ class ProfileScreen extends StatelessWidget {
             // 목표 기업
             _buildSectionCard(
               title: '목표 기업',
-              action: Container(width: 32, height: 32, decoration: const BoxDecoration(color: primaryColor, shape: BoxShape.circle), child: const Icon(Icons.add, color: Colors.white, size: 20)),
+              action: Container(
+                width: 32, 
+                height: 32, 
+                // 💡 에러 원인 해결: const 키워드 제거
+                decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), 
+                child: const Icon(Icons.add, color: Colors.white, size: 20),
+              ),
               child: Column(
                 children: [
                   _buildCompanyRow('네이버', 0.75, primaryColor),
@@ -117,10 +123,17 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(color: primaryColor.withOpacity(0.08), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryColor.withOpacity(0.2))),
                 child: Row(
                   children: [
-                    Container(width: 48, height: 48, decoration: const BoxDecoration(color: primaryColor, shape: BoxShape.circle), child: const Icon(Icons.emoji_events_outlined, color: Colors.white)),
+                    Container(
+                      width: 48, 
+                      height: 48, 
+                      // 💡 에러 원인 해결: const 키워드 제거
+                      decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), 
+                      child: const Icon(Icons.emoji_events_outlined, color: Colors.white),
+                    ),
                     const SizedBox(width: 16),
                     const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('업적 및 뱃지', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), Text('획득한 칭호와 뱃지를 확인하세요', style: TextStyle(color: Colors.black54, fontSize: 13))])),
-                    const Icon(Icons.chevron_right, color: primaryColor),
+                    // 💡 에러 원인 해결: const 키워드 제거
+                    Icon(Icons.chevron_right, color: primaryColor),
                   ],
                 ),
               ),

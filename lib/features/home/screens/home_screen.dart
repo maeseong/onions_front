@@ -167,6 +167,8 @@ class HomeScreen extends StatelessWidget {
 
   // 퀘스트 카드를 그리는 내부 위젯 함수
   Widget _buildQuestCard(String title, String subtitle, String tag, BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -208,16 +210,16 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Row(
                       children: [
-                        Icon(Icons.eco, size: 14, color: Theme.of(context).primaryColor),
+                        Icon(Icons.eco, size: 14, color: primaryColor), // 👈 변수 적용
                         const SizedBox(width: 2),
-                        Text('성장 +1', style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                        Text('성장 +1', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)), // 👈 변수 적용
                       ],
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(color: Colors.teal[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('진행중', style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                      child: Text('진행중', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)), // 👈 변수 적용
                     ),
                   ],
                 )

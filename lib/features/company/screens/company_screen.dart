@@ -95,10 +95,9 @@ class _CompanyScreenState extends State<CompanyScreen> {
   ];
 
   String _selectedFilter = '전체';
-  final Color primaryColor = const Color(0xFF61B099);
 
-  // 매칭률에 따라 색상을 반환
-  Color _getMatchColor(int rate) {
+  // 매칭률에 따라 색상을 반환(primaryColor를 인자로 받음)
+  Color _getMatchColor(int rate, Color primaryColor) {
     if (rate >= 80) return primaryColor; // 80% 이상: 초록
     if (rate >= 70) return const Color(0xFF42A5F5); // 70% 대: 파랑
     return const Color(0xFFF57C00); // 60% 대: 주황
@@ -106,6 +105,8 @@ class _CompanyScreenState extends State<CompanyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -124,15 +125,15 @@ class _CompanyScreenState extends State<CompanyScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 children: [
-                  _buildFilterChip('전체'),
+                  _buildFilterChip('전체', primaryColor),
                   const SizedBox(width: 8),
-                  _buildFilterChip('대기업'),
+                  _buildFilterChip('대기업', primaryColor),
                   const SizedBox(width: 8),
-                  _buildFilterChip('중견'),
+                  _buildFilterChip('중견', primaryColor),
                   const SizedBox(width: 8),
-                  _buildFilterChip('스타트업'),
+                  _buildFilterChip('스타트업', primaryColor),
                   const SizedBox(width: 8),
-                  _buildFilterChip('개발'),
+                  _buildFilterChip('개발', primaryColor),
                 ],
               ),
             ),
@@ -208,7 +209,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
               itemCount: _companies.length,
               separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
-                return _buildCompanyCard(_companies[index]);
+                return _buildCompanyCard(_companies[index], primaryColor);
               },
             ),
             const SizedBox(height: 40),
@@ -219,7 +220,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
   }
 
   // 필터 칩 위젯
-  Widget _buildFilterChip(String label) {
+  Widget _buildFilterChip(String label, Color primaryColor) {
     bool isSelected = _selectedFilter == label;
     return ActionChip(
       label: Text(
@@ -249,8 +250,8 @@ class _CompanyScreenState extends State<CompanyScreen> {
   }
 
   // 개별 기업 카드
-  Widget _buildCompanyCard(CompanyModel company) {
-    final matchColor = _getMatchColor(company.matchRate); // 매칭률별 컬러 추출
+  Widget _buildCompanyCard(CompanyModel company, Color primaryColor) {
+    final matchColor = _getMatchColor(company.matchRate, primaryColor); // 매칭률별 컬러 추출
 
     return Container(
       padding: const EdgeInsets.all(20),

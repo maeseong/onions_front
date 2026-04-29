@@ -39,7 +39,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // d-day 색깔 규칙
   Color _getDDayColor(DateTime targetDate) {
-    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    // 💡 최적화: DateTime.now()를 한 번만 호출하여 변수에 담아 사용
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
     final diff = target.difference(today).inDays;
 
@@ -238,9 +240,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildEventCard(ScheduleEvent event) {
     final Color dDayColor = _getDDayColor(event.date); 
-    
-    // d-day 계산
-    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(event.date.year, event.date.month, event.date.day);
     final diff = target.difference(today).inDays;
     final dDayText = diff == 0 ? 'D-Day' : (diff > 0 ? 'D-$diff' : 'D+${diff.abs()}');

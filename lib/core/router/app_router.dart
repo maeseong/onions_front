@@ -55,6 +55,7 @@ class MainNavigationScaffold extends StatelessWidget {
     return Scaffold(
       body: child, 
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
         items: const [
