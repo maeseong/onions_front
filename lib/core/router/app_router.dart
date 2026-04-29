@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/auth/screens/splash_screen.dart';
+import '../../features/auth/screens/login_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/schedule/screens/schedule_screen.dart';
 import '../../features/ai_consulting/screens/ai_screen.dart';
 import '../../features/company/screens/company_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 
-// 라우터 설정: 화면 이동 규칙
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/home', 
+  initialLocation: '/splash',
   routes: [
+    // 네비게이션 바가 없는 단독 화면들
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
+    // 네비게이션 바가 있는 메인 화면들
     ShellRoute( 
       builder: (context, state, child) {
         return MainNavigationScaffold(child: child);
@@ -55,7 +61,7 @@ class MainNavigationScaffold extends StatelessWidget {
     return Scaffold(
       body: child, 
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, // 탭 고정
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
         items: const [
