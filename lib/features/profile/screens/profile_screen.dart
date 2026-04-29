@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'achievement_screen.dart'; // 상세 화면 연결을 위해 필요
+import 'achievement_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF61B099); // 피그마 메인 초록색
+    const Color primaryColor = Color(0xFF61B099);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -26,7 +26,7 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // 1. 상단 성장 경험치 카드
+            // 상단 성장 경험치 카드
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(24)),
@@ -74,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 2. 내 스펙 (인턴 0회 빨간색 포인트)
+            // 내 스펙
             _buildSectionCard(
               title: '내 스펙',
               action: _buildPillButton('수정', Icons.edit, primaryColor),
@@ -89,13 +89,13 @@ class ProfileScreen extends StatelessWidget {
                   _buildSpecItem('학점', '3.8/4.5', false),
                   _buildSpecItem('토익', '850', false),
                   _buildSpecItem('자격증', '2개', false),
-                  _buildSpecItem('인턴', '0회', true), // Warning 상태
+                  _buildSpecItem('인턴', '0회', true),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // 3. 목표 기업
+            // 목표 기업
             _buildSectionCard(
               title: '목표 기업',
               action: Container(width: 32, height: 32, decoration: const BoxDecoration(color: primaryColor, shape: BoxShape.circle), child: const Icon(Icons.add, color: Colors.white, size: 20)),
@@ -109,7 +109,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // 4. 업적 및 뱃지 진입 배너
+            // 업적 및 뱃지
             InkWell(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AchievementScreen())),
               child: Container(

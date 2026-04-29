@@ -29,7 +29,7 @@ class AiScreen extends StatelessWidget {
             const Text('2학년 · 개발 · 민준', style: TextStyle(color: Colors.black54, fontSize: 14)),
             const SizedBox(height: 24),
 
-            // --- 내 현재 스펙 카드 영역 ---
+            // 현재 스펙 영역
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -43,7 +43,7 @@ class AiScreen extends StatelessWidget {
                   const Text('나의 현재 스펙', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   
-                  // 스펙 그리드 (2x2)
+                  // 스펙 그리드
                   Row(
                     children: [
                       Expanded(child: _buildSpecItem('🎓', '학점', '3.8/4.5', false)),
@@ -65,19 +65,19 @@ class AiScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // --- 챗봇 진입 버튼 (현재는 보류 상태로 아무 기능 없음) ---
+            // 챗봇 진입 버튼(현재는 버튼만 구현된 상태)
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: 기획 확정 후 챗봇 화면 이동 로직 추가 예정
-                  print('채팅 기능은 현재 기획 논의 중입니다.');
+                  // 챗봇 화면 이동 로직 추가 예정
+                  print('미완성');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)), // 알약 모양
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                 ),
                 child: const Text('AI와 스펙 진단하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
@@ -88,7 +88,7 @@ class AiScreen extends StatelessWidget {
     );
   }
 
-  // 스펙 아이템을 그리는 작은 위젯
+  // 스펙 아이템을 그리는 위젯
   Widget _buildSpecItem(String icon, String title, String value, bool isWarning) {
     return Container(
       padding: const EdgeInsets.all(16),

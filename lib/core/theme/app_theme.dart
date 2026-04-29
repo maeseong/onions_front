@@ -20,18 +20,18 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
-          foregroundColor: Colors.white, // 버튼 글씨 색상
-          minimumSize: const Size(double.infinity, 56), // 버튼 크기
+          foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28), // 양끝이 둥근 형태
+            borderRadius: BorderRadius.circular(28),
           ),
         ),
       ),
 
-      // 하단 네비게이션 바 기본 스타일
+      // 네비게이션 바 기본 스타일
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
-        selectedItemColor: primaryColor, // 선택된 탭은 다크 그린
+        selectedItemColor: primaryColor,
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed, // 탭이 4개 이상일 때 움직이지 않도록 고정

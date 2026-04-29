@@ -103,7 +103,7 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // 로드맵 펼치기 버튼
+              // 로드맵 펼치기
               SizedBox(
                 width: double.infinity,
                 height: 56,

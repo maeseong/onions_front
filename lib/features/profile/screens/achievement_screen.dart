@@ -20,7 +20,7 @@ class AchievementScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 레벨 및 나무 성장 단계 카드
+            // 레벨 및 나무 성장 단계 카드
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(24)),
@@ -48,7 +48,7 @@ class AchievementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // 2. 획득 칭호
+            // 획득 칭호
             const Text('획득 칭호', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Wrap(
@@ -62,7 +62,7 @@ class AchievementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // 3. 뱃지 컬렉션
+            // 뱃지 컬렉션
             const Text('뱃지 컬렉션', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             GridView.count(
