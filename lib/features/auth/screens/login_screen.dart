@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/auth_provider.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final primaryColor = Theme.of(context).primaryColor;
+    
+    // AuthController의 현재 상태(로딩 중인지 여부)를 구독
+    final isLoading = ref.watch(authControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -65,7 +70,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 로그인 버튼
+              // 일반 로그인 버튼
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -95,9 +100,29 @@ class LoginScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 카카오톡
-                  _buildClippedImageSocialButton(
-                    imagePath: 'assets/images/kakao_logo.jpg',
+                  // 카카오톡 로그인 연동
+                  InkWell(
+                    // 로딩 중일 때는 버튼 터치 방지
+                    onTap: isLoading ? null : () async {
+                      // 카카오 로그인 API 호출
+                      final isNewUser = await ref.read(authControllerProvider.notifier).loginWithKakao();
+                      
+                      // 결과에 따른 분기 라우팅
+                      if (context.mounted && isNewUser != null) {
+                        if (isNewUser) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신규 유저입니다. 온보딩으로 이동합니다.')));
+                          // context.go('/onboarding');
+                        } else {
+                          context.go('/home');
+                        }
+                      } else if (context.mounted && isNewUser == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인에 실패했습니다.')));
+                      }
+                    },
+                    child: _buildClippedImageSocialButton(
+                      imagePath: 'assets/images/kakao_logo.jpg',
+                      isLoading: isLoading, // 로딩 상태 전달
+                    ),
                   ),
                   const SizedBox(width: 16),
                   
@@ -154,33 +179,37 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  // 이미지를 컨테이너에 가득 채우거나 적절한 여백을 주는 함수
   Widget _buildClippedImageSocialButton({
     required String imagePath,
     Color? backgroundColor,
     double iconPadding = 0.0,
     bool hasBorder = false,
+    bool isLoading = false,
   }) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-        border: hasBorder ? Border.all(color: Colors.grey[300]!) : null,
-      ),
-
-      child: Padding(
-        padding: EdgeInsets.all(iconPadding),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.cover,
-            // 이미지 경로 에러 방지
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey),
-          ),
+    return Opacity(
+      // 로딩 중일 때 버튼을 흐리게 보이도록 처리
+      opacity: isLoading ? 0.5 : 1.0,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+          border: hasBorder ? Border.all(color: Colors.grey[300]!) : null,
         ),
+        child: isLoading 
+            ? const Center(child: CircularProgressIndicator(strokeWidth: 2)) 
+            : Padding(
+                padding: EdgeInsets.all(iconPadding),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                  ),
+                ),
+              ),
       ),
     );
   }
