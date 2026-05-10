@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/ground.dart';
 import '../providers/home_provider.dart';
+import 'roadmap_detail_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -52,6 +53,8 @@ class HomeScreen extends ConsumerWidget {
     final questAsync = questTab == 0
         ? ref.watch(mainQuestProvider)
         : ref.watch(subQuestProvider);
+    final isExpanded = ref.watch(roadmapExpandedProvider);
+    final roadmapAsync = ref.watch(roadmapProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -84,14 +87,10 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     child: Column(
                       children: [
-                        // 카드 상단: 타이틀 및 뱃지
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              '내 성장 필드',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
+                            const Text('내 성장 필드', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
@@ -110,7 +109,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 16),
 
-                        // 카드 중단: 땅바닥 + 나무
+                        // 땅 + 나무
                         SizedBox(
                           width: double.infinity,
                           height: 220,
@@ -125,11 +124,7 @@ class HomeScreen extends ConsumerWidget {
                                   child: Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      const GroundPlot(
-                                        width: 260,
-                                        height: 130,
-                                        elevation: 25,
-                                      ),
+                                      const GroundPlot(width: 260, height: 130, elevation: 25),
                                       ..._buildTrees(completedQuests),
                                     ],
                                   ),
@@ -140,7 +135,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 20),
 
-                        // 카드 하단: 경험치 바
+                        // 경험치 바
                         LinearProgressIndicator(
                           value: nextLevelExp > 0 ? totalExp / nextLevelExp : 0,
                           backgroundColor: Colors.grey[200],
@@ -167,29 +162,165 @@ class HomeScreen extends ConsumerWidget {
                   );
                 },
               ),
-
               const SizedBox(height: 32),
 
-              // 로드맵 펼치기
+              // 로드맵 펼치기 버튼
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => ref.read(roadmapExpandedProvider.notifier).toggle(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('로드맵 펼치기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Icon(Icons.keyboard_arrow_down),
+                      Text(
+                        isExpanded ? '로드맵 접기' : '로드맵 펼치기',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
                     ],
                   ),
                 ),
               ),
+
+              // 로드맵 내용
+              if (isExpanded) ...[
+                const SizedBox(height: 16),
+                roadmapAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => const Center(child: Text('로드맵을 불러오지 못했어요')),
+                  data: (roadmap) {
+                    final stages = roadmap['stages'] as List? ?? [];
+                    final title = roadmap['title'] ?? '';
+                    final progressRate = roadmap['progress_rate'] ?? 0;
+
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 로드맵 제목 + 진행률
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
+                              Text('$progressRate%', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          LinearProgressIndicator(
+                            value: progressRate / 100,
+                            backgroundColor: Colors.grey[200],
+                            color: primaryColor,
+                            minHeight: 8,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // 단계 리스트
+                          ...stages.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final stage = entry.value;
+                            final isCompleted = stage['is_completed'] ?? false;
+                            final isLast = index == stages.length - 1;
+
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RoadmapDetailScreen(stage: stage),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 타임라인
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: 32, height: 32,
+                                        decoration: BoxDecoration(
+                                          color: isCompleted ? primaryColor : Colors.grey[200],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          isCompleted ? Icons.check : Icons.radio_button_unchecked,
+                                          size: 16,
+                                          color: isCompleted ? Colors.white : Colors.grey,
+                                        ),
+                                      ),
+                                      if (!isLast)
+                                        Container(
+                                          width: 2,
+                                          height: 48,
+                                          color: isCompleted ? primaryColor.withOpacity(0.3) : Colors.grey[200],
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 16),
+
+                                  // 단계 내용
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 16),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: isCompleted ? primaryColor.withOpacity(0.05) : Colors.grey[50],
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isCompleted ? primaryColor.withOpacity(0.2) : Colors.grey[200]!,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    stage['stage_name'] ?? '',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: isCompleted ? primaryColor : Colors.black87,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    stage['description'] ?? '',
+                                                    style: const TextStyle(color: Colors.black54, fontSize: 13),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Icon(Icons.chevron_right, color: Colors.grey[400]),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
               const SizedBox(height: 24),
 
               // 퀘스트 탭
@@ -208,10 +339,7 @@ class HomeScreen extends ConsumerWidget {
                         child: Center(
                           child: Text(
                             '메인 퀘스트',
-                            style: TextStyle(
-                              color: questTab == 0 ? Colors.white : Colors.black54,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(color: questTab == 0 ? Colors.white : Colors.black54, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -231,10 +359,7 @@ class HomeScreen extends ConsumerWidget {
                         child: Center(
                           child: Text(
                             '서브 퀘스트',
-                            style: TextStyle(
-                              color: questTab == 1 ? Colors.white : Colors.black54,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(color: questTab == 1 ? Colors.white : Colors.black54, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -310,23 +435,19 @@ class HomeScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2)),
-          ]
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
+            width: 48, height: 48,
+            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.laptop_mac, color: Colors.black54),
           ),
           const SizedBox(width: 16),

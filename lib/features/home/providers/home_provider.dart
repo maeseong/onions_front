@@ -28,3 +28,19 @@ class QuestTabNotifier extends Notifier<int> {
 
   void set(int tab) => state = tab;
 }
+// 로드맵 데이터
+final roadmapProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final repository = ref.watch(homeRepositoryProvider);
+  return repository.fetchRoadmap();
+});
+
+// 로드맵 펼치기 상태 (true: 펼침, false: 접힘)
+final roadmapExpandedProvider = NotifierProvider<RoadmapExpandedNotifier, bool>(
+  RoadmapExpandedNotifier.new,
+);
+
+class RoadmapExpandedNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void toggle() => state = !state;
+}
