@@ -1,8 +1,55 @@
 import 'package:flutter/material.dart';
 import '../widgets/ground.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int treeCount = 25;
+
+  // ground.dart 기준으로 수학적으로 정확히 계산된 5x5 = 25칸 중심 좌표
+  // width=260, height=130 아이소메트릭 격자
+  static const List<Offset> _allSlots = [
+    Offset(130.0, 13.0),   // 1
+    Offset(156.0, 26.0),   // 2
+    Offset(104.0, 26.0),   // 3
+    Offset(182.0, 39.0),   // 4
+    Offset(130.0, 39.0),   // 5
+    Offset(78.0,  39.0),   // 6
+    Offset(208.0, 52.0),   // 7
+    Offset(156.0, 52.0),   // 8
+    Offset(104.0, 52.0),   // 9
+    Offset(52.0,  52.0),   // 10
+    Offset(234.0, 65.0),   // 11
+    Offset(182.0, 65.0),   // 12
+    Offset(130.0, 65.0),   // 13
+    Offset(78.0,  65.0),   // 14
+    Offset(26.0,  65.0),   // 15
+    Offset(208.0, 78.0),   // 16
+    Offset(156.0, 78.0),   // 17
+    Offset(104.0, 78.0),   // 18
+    Offset(52.0,  78.0),   // 19
+    Offset(182.0, 91.0),   // 20
+    Offset(130.0, 91.0),   // 21
+    Offset(78.0,  91.0),   // 22
+    Offset(156.0, 104.0),  // 23
+    Offset(104.0, 104.0),  // 24
+    Offset(130.0, 117.0),  // 25
+  ];
+
+  List<Widget> _buildTrees(int count) {
+    return List.generate(count.clamp(0, _allSlots.length), (i) {
+      return Positioned(
+        left: _allSlots[i].dx - 16,
+        top:  _allSlots[i].dy - 24,
+        child: const Text('🌳', style: TextStyle(fontSize: 32)),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,17 +63,17 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
+
               // 내 성장 필드
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey[200]!),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                  ]
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey[200]!),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                    ]
                 ),
                 child: Column(
                   children: [
@@ -56,20 +103,31 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // 카드 중단: 땅바닥
-                    Container(
+                    // 카드 중단: 땅바닥 + 나무
+                    SizedBox(
                       width: double.infinity,
                       height: 220,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1B2B22),
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Center(
-                        child: GroundPlot(
-                          width: 260, 
-                          height: 130,
-                          elevation: 25,
+                        child: Container(
+                          color: const Color(0xFF1B2B22),
+                          child: Center(
+                            child: SizedBox(
+                              width: 260,
+                              height: 200,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const GroundPlot(
+                                    width: 260,
+                                    height: 130,
+                                    elevation: 25,
+                                  ),
+                                  ..._buildTrees(treeCount),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -155,7 +213,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // 퀘스트 카드 리스트
-              _buildQuestCard('프로젝트 진행하기', '더 프로젝트를 진행하고 GitHub에 업로드하세요', '개발', context),
+              _buildQuestCard('프로젝트 진행하기', '프로젝트를 진행하고 GitHub에 업로드하세요', '개발', context),
               const SizedBox(height: 12),
               _buildQuestCard('정보처리기사 취득하기', '정보처리기사 자격증을 취득하세요', '자격증', context),
             ],
@@ -165,19 +223,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // 퀘스트 카드를 그리는 내부 위젯 함수
   Widget _buildQuestCard(String title, String subtitle, String tag, BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2)),
-        ]
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2)),
+          ]
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,16 +267,16 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Row(
                       children: [
-                        Icon(Icons.eco, size: 14, color: primaryColor), // 👈 변수 적용
+                        Icon(Icons.eco, size: 14, color: primaryColor),
                         const SizedBox(width: 2),
-                        Text('성장 +1', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)), // 👈 변수 적용
+                        Text('성장 +1', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(color: Colors.teal[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('진행중', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)), // 👈 변수 적용
+                      child: Text('진행중', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 )
