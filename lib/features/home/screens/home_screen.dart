@@ -1,44 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/ground.dart';
+import '../providers/home_provider.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int treeCount = 25;
-
-  // ground.dart 기준으로 수학적으로 정확히 계산된 5x5 = 25칸 중심 좌표
-  // width=260, height=130 아이소메트릭 격자
   static const List<Offset> _allSlots = [
-    Offset(130.0, 13.0),   // 1
-    Offset(156.0, 26.0),   // 2
-    Offset(104.0, 26.0),   // 3
-    Offset(182.0, 39.0),   // 4
-    Offset(130.0, 39.0),   // 5
-    Offset(78.0,  39.0),   // 6
-    Offset(208.0, 52.0),   // 7
-    Offset(156.0, 52.0),   // 8
-    Offset(104.0, 52.0),   // 9
-    Offset(52.0,  52.0),   // 10
-    Offset(234.0, 65.0),   // 11
-    Offset(182.0, 65.0),   // 12
-    Offset(130.0, 65.0),   // 13
-    Offset(78.0,  65.0),   // 14
-    Offset(26.0,  65.0),   // 15
-    Offset(208.0, 78.0),   // 16
-    Offset(156.0, 78.0),   // 17
-    Offset(104.0, 78.0),   // 18
-    Offset(52.0,  78.0),   // 19
-    Offset(182.0, 91.0),   // 20
-    Offset(130.0, 91.0),   // 21
-    Offset(78.0,  91.0),   // 22
-    Offset(156.0, 104.0),  // 23
-    Offset(104.0, 104.0),  // 24
-    Offset(130.0, 117.0),  // 25
+    Offset(130.0, 13.0),
+    Offset(156.0, 26.0),
+    Offset(104.0, 26.0),
+    Offset(182.0, 39.0),
+    Offset(130.0, 39.0),
+    Offset(78.0,  39.0),
+    Offset(208.0, 52.0),
+    Offset(156.0, 52.0),
+    Offset(104.0, 52.0),
+    Offset(52.0,  52.0),
+    Offset(234.0, 65.0),
+    Offset(182.0, 65.0),
+    Offset(130.0, 65.0),
+    Offset(78.0,  65.0),
+    Offset(26.0,  65.0),
+    Offset(208.0, 78.0),
+    Offset(156.0, 78.0),
+    Offset(104.0, 78.0),
+    Offset(52.0,  78.0),
+    Offset(182.0, 91.0),
+    Offset(130.0, 91.0),
+    Offset(78.0,  91.0),
+    Offset(156.0, 104.0),
+    Offset(104.0, 104.0),
+    Offset(130.0, 117.0),
   ];
 
   List<Widget> _buildTrees(int count) {
@@ -52,8 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final primaryColor = Theme.of(context).primaryColor;
+    final growthAsync = ref.watch(growthProvider);
+    final questTab = ref.watch(questTabProvider);
+    final questAsync = questTab == 0
+        ? ref.watch(mainQuestProvider)
+        : ref.watch(subQuestProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -65,98 +63,109 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
 
               // 내 성장 필드
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey[200]!),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                    ]
-                ),
-                child: Column(
-                  children: [
-                    // 카드 상단: 타이틀 및 뱃지
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '내 성장 필드',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.eco, size: 16, color: primaryColor),
-                              const SizedBox(width: 4),
-                              Text('8/20', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
+              growthAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => const Center(child: Text('성장도를 불러오지 못했어요')),
+                data: (growth) {
+                  final completedQuests = growth['completed_quests'] ?? 0;
+                  final totalQuests = growth['total_quests'] ?? 20;
+                  final totalExp = growth['total_exp'] ?? 0;
+                  final nextLevelExp = growth['next_level_exp'] ?? 1000;
 
-                    // 카드 중단: 땅바닥 + 나무
-                    SizedBox(
-                      width: double.infinity,
-                      height: 220,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          color: const Color(0xFF1B2B22),
-                          child: Center(
-                            child: SizedBox(
-                              width: 260,
-                              height: 200,
-                              child: Stack(
-                                clipBehavior: Clip.none,
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.grey[200]!),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ]
+                    ),
+                    child: Column(
+                      children: [
+                        // 카드 상단: 타이틀 및 뱃지
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '내 성장 필드',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
                                 children: [
-                                  const GroundPlot(
-                                    width: 260,
-                                    height: 130,
-                                    elevation: 25,
-                                  ),
-                                  ..._buildTrees(treeCount),
+                                  Icon(Icons.eco, size: 16, color: primaryColor),
+                                  const SizedBox(width: 4),
+                                  Text('$completedQuests/$totalQuests', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                                 ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 카드 중단: 땅바닥 + 나무
+                        SizedBox(
+                          width: double.infinity,
+                          height: 220,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              color: const Color(0xFF1B2B22),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 260,
+                                  height: 200,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      const GroundPlot(
+                                        width: 260,
+                                        height: 130,
+                                        elevation: 25,
+                                      ),
+                                      ..._buildTrees(completedQuests),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                    // 카드 하단: 경험치 바
-                    LinearProgressIndicator(
-                      value: 8 / 20,
-                      backgroundColor: Colors.grey[200],
-                      color: primaryColor,
-                      minHeight: 12,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    const SizedBox(height: 12),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+                        // 카드 하단: 경험치 바
+                        LinearProgressIndicator(
+                          value: nextLevelExp > 0 ? totalExp / nextLevelExp : 0,
+                          backgroundColor: Colors.grey[200],
+                          color: primaryColor,
+                          minHeight: 12,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        const SizedBox(height: 12),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(Icons.emoji_events_outlined, size: 18, color: Colors.black54),
-                            SizedBox(width: 4),
-                            Text('완료한 퀘스트 3개', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
+                            Row(
+                              children: [
+                                const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.black54),
+                                const SizedBox(width: 4),
+                                Text('완료한 퀘스트 ${completedQuests}개', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                            Text('목표까지 ${totalQuests - completedQuests}개', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
                           ],
                         ),
-                        Text('목표까지 12개', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 32),
@@ -187,25 +196,48 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: primaryColor,
-                        borderRadius: BorderRadius.circular(24),
+                    child: GestureDetector(
+                      onTap: () => ref.read(questTabProvider.notifier).set(0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: questTab == 0 ? primaryColor : Colors.white,
+                          border: Border.all(color: questTab == 0 ? primaryColor : Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '메인 퀘스트',
+                            style: TextStyle(
+                              color: questTab == 0 ? Colors.white : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Center(child: Text('메인 퀘스트', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(24),
+                    child: GestureDetector(
+                      onTap: () => ref.read(questTabProvider.notifier).set(1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: questTab == 1 ? primaryColor : Colors.white,
+                          border: Border.all(color: questTab == 1 ? primaryColor : Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '서브 퀘스트',
+                            style: TextStyle(
+                              color: questTab == 1 ? Colors.white : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Center(child: Text('서브 퀘스트', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold))),
                     ),
                   ),
                 ],
@@ -213,9 +245,35 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
 
               // 퀘스트 카드 리스트
-              _buildQuestCard('프로젝트 진행하기', '프로젝트를 진행하고 GitHub에 업로드하세요', '개발', context),
-              const SizedBox(height: 12),
-              _buildQuestCard('정보처리기사 취득하기', '정보처리기사 자격증을 취득하세요', '자격증', context),
+              questAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => const Center(child: Text('퀘스트를 불러오지 못했어요')),
+                data: (quests) {
+                  if (quests.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Text('퀘스트가 없어요', style: TextStyle(color: Colors.black54)),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: quests.map((quest) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildQuestCard(
+                          title: quest['quest_name'] ?? '',
+                          subtitle: quest['description'] ?? '',
+                          tag: quest['category'] ?? '',
+                          status: quest['status'] ?? 'not_started',
+                          expReward: quest['exp_reward'] ?? 0,
+                          context: context,
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -223,8 +281,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuestCard(String title, String subtitle, String tag, BuildContext context) {
+  Widget _buildQuestCard({
+    required String title,
+    required String subtitle,
+    required String tag,
+    required String status,
+    required int expReward,
+    required BuildContext context,
+  }) {
     final primaryColor = Theme.of(context).primaryColor;
+
+    String statusText;
+    Color statusColor;
+    switch (status) {
+      case 'completed':
+        statusText = '완료';
+        statusColor = Colors.green;
+        break;
+      case 'in_progress':
+        statusText = '진행중';
+        statusColor = primaryColor;
+        break;
+      default:
+        statusText = '시작 전';
+        statusColor = Colors.grey;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -269,20 +350,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Icon(Icons.eco, size: 14, color: primaryColor),
                         const SizedBox(width: 2),
-                        Text('성장 +1', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
+                        Text('성장 +$expReward', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.teal[50], borderRadius: BorderRadius.circular(12)),
-                      child: Text('진행중', style: TextStyle(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: Text(statusText, style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.bold)),
                     ),
                   ],
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
