@@ -111,7 +111,7 @@ class LoginScreen extends ConsumerWidget {
                       if (context.mounted && isNewUser != null) {
                         if (isNewUser) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신규 유저입니다. 온보딩으로 이동합니다.')));
-                          // context.go('/onboarding');
+                          context.go('/onboarding');
                         } else {
                           context.go('/home');
                         }
