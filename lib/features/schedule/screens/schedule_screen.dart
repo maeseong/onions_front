@@ -1,133 +1,217 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import '../providers/schedule_provider.dart';
+import '../repositories/schedule_repository.dart';
 
-class ScheduleScreen extends StatefulWidget {
+class ScheduleScreen extends ConsumerWidget {
   const ScheduleScreen({super.key});
 
   @override
-  State<ScheduleScreen> createState() => _ScheduleScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primaryColor = Theme.of(context).primaryColor;
+    final focusedDay = ref.watch(focusedDayProvider);
+    final selectedDay = ref.watch(selectedDayProvider);
+    final yearMonth = '${focusedDay.year}-${focusedDay.month}';
+    final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
-
-  // 가짜 데이터
-  Map<DateTime, List<Map<String, dynamic>>> _events = {
-    DateTime(2026, 5, 9): [
-      {'title': '정보처리기사 필기 시험', 'type': '시험', 'dDay': 'D-1'}
-    ],
-    DateTime(2026, 5, 12): [
-      {'title': '코딩 테스트 대비 스터디', 'type': '스터디', 'dDay': 'D-4'}
-    ],
-    DateTime(2026, 5, 19): [
-      {'title': '네이버 서류 마감', 'type': '일반', 'dDay': 'D-11'}
-    ],
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedDay = _focusedDay;
-  }
-
-  List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
-    return _events[DateTime(day.year, day.month, day.day)] ?? [];
-  }
-
-  // 일정 삭제
-  void _deleteEvent(DateTime day, int index) {
-    setState(() {
-      final normalizedDay = DateTime(day.year, day.month, day.day);
-      _events[normalizedDay]?.removeAt(index);
-      if (_events[normalizedDay]!.isEmpty) {
-        _events.remove(normalizedDay);
-      }
-    });
-  }
-
-  // 날짜 클릭 시 나타나는 일정 확인 팝업
-  void _showDayEventsPopup(DateTime day) {
-    final dayEvents = _getEventsForDay(day);
-    if (dayEvents.isEmpty) return; // 일정 없는 날은 팝업 안 띄움
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final primaryColor = Theme.of(context).primaryColor;
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${day.month}월 ${day.day}일 일정', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: dayEvents.length,
-              itemBuilder: (context, index) {
-                final event = dayEvents[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(event['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(event['type'], style: TextStyle(color: primaryColor, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                          onPressed: () {
-                            _deleteEvent(day, index);
-                            Navigator.pop(context); // 삭제 후 팝업 닫기
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8F9FA),
+        elevation: 0,
+        title: const Text('일정', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black87), onPressed: () {}),
+        ],
+      ),
+      body: scheduleAsync.when(
+        loading: () => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, [], yearMonth),
+        error: (e, _) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, [], yearMonth),
+        data: (schedules) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, schedules, yearMonth),
+      ),
     );
   }
 
-  void _showAddScheduleDialog() {
+  Map<DateTime, List<dynamic>> _buildEventMap(List<dynamic> schedules) {
+    final Map<DateTime, List<dynamic>> eventMap = {};
+    for (final schedule in schedules) {
+      final date = DateTime.parse(schedule['scheduled_date']);
+      final key = DateTime(date.year, date.month, date.day);
+      eventMap[key] = [...(eventMap[key] ?? []), schedule];
+    }
+    return eventMap;
+  }
+
+  List<dynamic> _getEventsForDay(DateTime day, Map<DateTime, List<dynamic>> eventMap) {
+    return eventMap[DateTime(day.year, day.month, day.day)] ?? [];
+  }
+
+  Widget _buildBody(
+      BuildContext context,
+      WidgetRef ref,
+      Color primaryColor,
+      DateTime focusedDay,
+      DateTime? selectedDay,
+      List<dynamic> schedules,
+      String yearMonth,
+      ) {
+    final eventMap = _buildEventMap(schedules);
+    final selectedEvents = selectedDay != null ? _getEventsForDay(selectedDay, eventMap) : [];
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // 캘린더 카드
+          Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              children: [
+                // 캘린더 헤더
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 48),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Colors.black87),
+                            onPressed: () {
+                              ref.read(focusedDayProvider.notifier).set(
+                                DateTime(focusedDay.year, focusedDay.month - 1, 1),
+                              );
+                            },
+                          ),
+                          Text(
+                            DateFormat('yyyy년 M월').format(focusedDay),
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: Colors.black87),
+                            onPressed: () {
+                              ref.read(focusedDayProvider.notifier).set(
+                                DateTime(focusedDay.year, focusedDay.month + 1, 1),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      // + 버튼
+                      InkWell(
+                        onTap: () => _showAddScheduleDialog(context, ref, selectedDay ?? DateTime.now(), yearMonth),
+                        child: Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.6), shape: BoxShape.circle),
+                          child: const Icon(Icons.add, color: Colors.white, size: 26),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 캘린더
+                TableCalendar(
+                  locale: 'ko_KR',
+                  firstDay: DateTime.utc(2020, 1, 1),
+                  lastDay: DateTime.utc(2030, 12, 31),
+                  focusedDay: focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(selectedDay, day),
+                  onDaySelected: (selected, focused) {
+                    ref.read(selectedDayProvider.notifier).set(selected);
+                    ref.read(focusedDayProvider.notifier).set(focused);
+                    final events = _getEventsForDay(selected, eventMap);
+                    if (events.isNotEmpty) {
+                      _showDayEventsPopup(context, ref, selected, events, yearMonth);
+                    }
+                  },
+                  eventLoader: (day) => _getEventsForDay(day, eventMap),
+                  headerVisible: false,
+                  calendarStyle: CalendarStyle(
+                    todayDecoration: BoxDecoration(color: primaryColor.withOpacity(0.2), shape: BoxShape.circle),
+                    selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
+                    markerDecoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                    outsideDaysVisible: false,
+                    weekendTextStyle: const TextStyle(color: Colors.red),
+                  ),
+                  daysOfWeekStyle: const DaysOfWeekStyle(
+                    weekendStyle: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 선택된 날짜 일정 리스트
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('주요 일정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    TextButton(onPressed: () {}, child: const Text('전체보기 >', style: TextStyle(color: Colors.grey, fontSize: 13))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                selectedEvents.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Text('해당 날짜에 일정이 없습니다.'),
+                )
+                    : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: selectedEvents.length,
+                  itemBuilder: (context, index) {
+                    final event = selectedEvents[index];
+                    return _buildScheduleItem(
+                      context: context,
+                      ref: ref,
+                      title: event['title'] ?? '',
+                      date: event['scheduled_date'] ?? '',
+                      dDay: 'D-${event['d_day'] ?? '?'}',
+                      type: event['schedule_type'] ?? '',
+                      scheduleId: event['schedule_id'],
+                      yearMonth: yearMonth,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  void _showAddScheduleDialog(BuildContext context, WidgetRef ref, DateTime selectedDay, String yearMonth) {
     final TextEditingController titleController = TextEditingController();
-    String selectedType = '일반';
+    final TextEditingController memoController = TextEditingController();
+    String selectedType = '기타';
+    final primaryColor = Theme.of(context).primaryColor;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        final primaryColor = Theme.of(context).primaryColor;
-
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
+          builder: (context, setModalState) {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -141,7 +225,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('새 일정 추가', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(DateFormat('yyyy.MM.dd').format(_selectedDay!), style: const TextStyle(color: Colors.black54)),
+                      Text(DateFormat('yyyy.MM.dd').format(selectedDay), style: const TextStyle(color: Colors.black54)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -154,12 +238,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: memoController,
+                    decoration: InputDecoration(
+                      hintText: '메모 (선택)',
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   const Text('카테고리', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 10,
-                    children: ['일반', '시험', '스터디', '면접'].map((type) {
+                    children: ['서류', '코딩테스트', '면접', '기타'].map((type) {
                       final isSelected = selectedType == type;
                       return ChoiceChip(
                         label: Text(type),
@@ -187,17 +281,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (titleController.text.trim().isEmpty) return;
-                        setState(() {
-                          final day = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-                          if (_events[day] != null) {
-                            _events[day]!.add({'title': titleController.text, 'type': selectedType, 'dDay': 'NEW'});
-                          } else {
-                            _events[day] = [{'title': titleController.text, 'type': selectedType, 'dDay': 'NEW'}];
+                        try {
+                          final repository = ref.read(scheduleRepositoryProvider);
+                          await repository.addSchedule(
+                            title: titleController.text.trim(),
+                            scheduleType: selectedType,
+                            scheduledDate: DateFormat('yyyy-MM-dd').format(selectedDay),
+                            memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
+                          );
+                          ref.invalidate(scheduleProvider(yearMonth));
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('일정 추가에 실패했어요')),
+                            );
                           }
-                        });
-                        Navigator.pop(context);
+                        }
                       },
                       child: const Text('일정 저장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
@@ -206,161 +308,91 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ],
               ),
             );
-          }
+          },
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).primaryColor;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F9FA),
-        elevation: 0,
-        title: const Text('일정', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black87), onPressed: () {}),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.all(20),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+  void _showDayEventsPopup(BuildContext context, WidgetRef ref, DateTime day, List<dynamic> events, String yearMonth) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final primaryColor = Theme.of(context).primaryColor;
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${day.month}월 ${day.day}일 일정', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const SizedBox(width: 48),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_left, color: Colors.black87),
-                              onPressed: () {
-                                setState(() {
-                                  _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
-                                });
-                              },
-                            ),
-                            Text(
-                              DateFormat('yyyy년 M월').format(_focusedDay),
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right, color: Colors.black87),
-                              onPressed: () {
-                                setState(() {
-                                  _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        InkWell(
-                          onTap: _showAddScheduleDialog,
-                          child: Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(color: primaryColor.withOpacity(0.6), shape: BoxShape.circle),
-                            child: const Icon(Icons.add, color: Colors.white, size: 26),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(event['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(event['schedule_type'] ?? '', style: TextStyle(color: primaryColor, fontSize: 12)),
+                            ],
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                          onPressed: () async {
+                            try {
+                              final repository = ref.read(scheduleRepositoryProvider);
+                              await repository.deleteSchedule(event['schedule_id']);
+                              ref.invalidate(scheduleProvider(yearMonth));
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('삭제에 실패했어요')),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ],
                     ),
                   ),
-                  TableCalendar(
-                    locale: 'ko_KR',
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    calendarFormat: _calendarFormat,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      // 날짜 선택 시 일정이 있으면 팝업 표시
-                      _showDayEventsPopup(selectedDay);
-                    },
-                    eventLoader: _getEventsForDay,
-                    headerVisible: false,
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(color: primaryColor.withOpacity(0.2), shape: BoxShape.circle),
-                      selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-                      markerDecoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                      outsideDaysVisible: false,
-                      weekendTextStyle: const TextStyle(color: Colors.red),
-                    ),
-                    daysOfWeekStyle: const DaysOfWeekStyle(
-                      weekendStyle: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('주요 일정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      TextButton(onPressed: () {}, child: const Text('전체보기 >', style: TextStyle(color: Colors.grey, fontSize: 13))),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  _getEventsForDay(_selectedDay!).isEmpty 
-                  ? const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Text("해당 날짜에 일정이 없습니다."))
-                  : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _getEventsForDay(_selectedDay!).length,
-                    itemBuilder: (context, index) {
-                      final event = _getEventsForDay(_selectedDay!)[index];
-                      return _buildScheduleItem(
-                        title: event['title'],
-                        date: DateFormat('yyyy-MM-dd').format(_selectedDay!),
-                        dDay: event['dDay'],
-                        type: event['type'],
-                        typeColor: const Color(0xFFEF5350), 
-                        onDelete: () => _deleteEvent(_selectedDay!, index),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildScheduleItem({
-    required String title, 
-    required String date, 
-    required String dDay, 
-    required String type, 
-    required Color typeColor,
-    required VoidCallback onDelete,
+    required BuildContext context,
+    required WidgetRef ref,
+    required String title,
+    required String date,
+    required String dDay,
+    required String type,
+    required dynamic scheduleId,
+    required String yearMonth,
   }) {
+    const typeColor = Color(0xFFEF5350);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -371,11 +403,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Row(
         children: [
           Container(
-            width: 6,
-            height: 84, 
-            decoration: BoxDecoration(
+            width: 6, height: 84,
+            decoration: const BoxDecoration(
               color: typeColor,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
             ),
           ),
           Expanded(
@@ -391,13 +422,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            // 💡 하단 리스트에서도 삭제 가능하도록 아이콘 추가
                             IconButton(
                               constraints: const BoxConstraints(),
                               padding: EdgeInsets.zero,
                               icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                              onPressed: onDelete,
-                            )
+                              onPressed: () async {
+                                try {
+                                  final repository = ref.read(scheduleRepositoryProvider);
+                                  await repository.deleteSchedule(scheduleId);
+                                  ref.invalidate(scheduleProvider(yearMonth));
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('삭제에 실패했어요')),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -406,7 +448,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: typeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                              child: Text(type, style: TextStyle(color: typeColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: Text(type, style: const TextStyle(color: typeColor, fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                             const SizedBox(width: 8),
                             Text(date, style: const TextStyle(color: Colors.grey, fontSize: 13)),
@@ -423,7 +465,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: typeColor.withOpacity(0.5)),
                     ),
-                    child: Text(dDay, style: TextStyle(color: typeColor, fontWeight: FontWeight.bold, fontSize: 15)),
+                    child: Text(dDay, style: const TextStyle(color: typeColor, fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
                 ],
               ),
