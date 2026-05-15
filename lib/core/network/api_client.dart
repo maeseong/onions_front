@@ -8,21 +8,34 @@ class ApiClient {
 
   ApiClient()
       : dio = Dio(BaseOptions(
-    baseUrl: AppConstants.baseUrl,
-    contentType: 'application/json',
-    connectTimeout: AppConstants.connectTimeout,
-    receiveTimeout: AppConstants.receiveTimeout,
-  )),
+          baseUrl: AppConstants.baseUrl,
+          contentType: 'application/json',
+          connectTimeout: AppConstants.connectTimeout,
+          receiveTimeout: AppConstants.receiveTimeout,
+        )),
         storage = const FlutterSecureStorage() {
-
     dio.interceptors.add(InterceptorsWrapper(
-
-      // 요청을 보내기 직전(토큰 끼워넣기)
+      // 요청을 보내기 직전(토큰 끼워넣기 제어)
       onRequest: (options, handler) async {
-        final accessToken = await storage.read(key: AppConstants.accessTokenKey);
-        if (accessToken != null) {
-          options.headers['Authorization'] = 'Bearer $accessToken';
+        // 토큰이 필요 없는 경로 목록 정의
+        final noTokenPaths = [
+          '/api/auth/login',
+          '/api/auth/kakao',
+          '/api/auth/google',
+          AppConstants.refreshTokenPath, // /api/auth/refresh
+        ];
+
+        // 현재 요청 경로가 토큰이 필요한 경로인지 확인
+        // (noTokenPaths에 포함되지 않은 경우에만 토큰을 넣음)
+        bool requiresToken = !noTokenPaths.any((path) => options.path.contains(path));
+
+        if (requiresToken) {
+          final accessToken = await storage.read(key: AppConstants.accessTokenKey);
+          if (accessToken != null) {
+            options.headers['Authorization'] = 'Bearer $accessToken';
+          }
         }
+        
         return handler.next(options);
       },
 
@@ -47,7 +60,6 @@ class ApiClient {
             e.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
             final retryResponse = await dio.fetch(e.requestOptions);
             return handler.resolve(retryResponse);
-
           } catch (refreshError) {
             await storage.deleteAll();
             return handler.next(e);
