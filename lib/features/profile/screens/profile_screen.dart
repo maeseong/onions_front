@@ -31,9 +31,9 @@ class ProfileScreen extends ConsumerWidget {
         data: (profile) {
           final spec = profile['spec'] ?? {};
           final gamification = profile['gamification'] ?? {};
-          final targetCompanies = profile['target_companies'] as List? ?? [];
+          final targetCompanies = profile['targetCompanies'] as List? ?? [];
           final level = gamification['level'] ?? 1;
-          final totalExp = gamification['total_exp'] ?? 0;
+          final totalExp = gamification['totalExp'] ?? 0;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
                                   style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                                 ),
                                 Text(
-                                  '${profile['grade'] ?? '-'}학년 · ${profile['job_name'] ?? '-'}',
+                                  '${profile['grade'] ?? '-'}학년 · ${profile['jobName'] ?? '-'}',
                                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                                 ),
                               ],
@@ -127,9 +127,9 @@ class ProfileScreen extends ConsumerWidget {
                     childAspectRatio: 1.6,
                     children: [
                       _buildSpecItem('학점', '${spec['gpa'] ?? '-'}/4.5', false),
-                      _buildSpecItem('토익', '${spec['toeic_score'] ?? '-'}', false),
-                      _buildSpecItem('자격증', '${spec['certificate_count'] ?? 0}개', false),
-                      _buildSpecItem('인턴', '${spec['internship_count'] ?? 0}회', (spec['internship_count'] ?? 0) == 0),
+                      _buildSpecItem('토익', '${spec['toeicScore'] ?? '-'}', false),
+                      _buildSpecItem('자격증', '${spec['certificateCount'] ?? 0}개', false),
+                      _buildSpecItem('인턴', '${spec['internshipCount'] ?? 0}회', (spec['internshipCount'] ?? 0) == 0),
                     ],
                   ),
                 ),
@@ -150,9 +150,9 @@ class ProfileScreen extends ConsumerWidget {
                   )
                       : Column(
                     children: targetCompanies.map((company) {
-                      final matchRate = (company['match_rate'] ?? 0) / 100.0;
+                      final matchRate = (company['matchRate'] ?? 0) / 100.0;
                       return _buildCompanyRow(
-                        company['company_name'] ?? '-',
+                        company['companyName'] ?? '-',
                         matchRate,
                         primaryColor,
                       );

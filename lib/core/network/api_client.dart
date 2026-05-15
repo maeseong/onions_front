@@ -38,10 +38,10 @@ class ApiClient {
           try {
             final refreshResponse = await Dio().post(
               '${AppConstants.baseUrl}${AppConstants.refreshTokenPath}',
-              data: {'refresh_token': refreshToken},
+              data: {'refreshToken': refreshToken},
             );
 
-            final newAccessToken = refreshResponse.data['data']['access_token'];
+            final newAccessToken = refreshResponse.data['data']['accessToken'];
             await storage.write(key: AppConstants.accessTokenKey, value: newAccessToken);
 
             e.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';

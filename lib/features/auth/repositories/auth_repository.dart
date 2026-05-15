@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
+import '../../../core/constants/app_constants.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  // apiClientProvider에서 dio 객체만 가져옴
   final apiClient = ref.watch(apiClientProvider);
   return AuthRepository(apiClient.dio, const FlutterSecureStorage());
 });
@@ -15,41 +15,58 @@ class AuthRepository {
 
   AuthRepository(this._dio, this._storage);
 
-  // 카카오 로그인 API 호출
-  // 반환값(bool): is_new_user(신규 유저 여부)
-  Future<bool> loginWithKakao(String kakaoToken) async {
+  // --- 1. 이메일 로그인 API 호출 (새로 추가) ---
+  Future<bool> loginWithEmail(String email, String password) async {
     try {
-      // 백엔드로 카카오 토큰 전송(명세서 기준 POST 요청)
-      final response = await _dio.post(
-        '/api/auth/kakao',
-        data: {'kakao_token': kakaoToken},
-      );
+      // 백엔드 주소는 명세서에 따라 '/api/auth/login' 등으로 수정이 필요할 수 있습니다.
+      final response = await _dio.post('/api/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
 
-      // 응답 성공(success: true)일 경우 처리
       if (response.data['success'] == true) {
         final data = response.data['data'];
         
-        // 기기 내부에 발급받은 JWT 토큰 저장
-        await _storage.write(key: 'access_token', value: data['access_token']);
-        await _storage.write(key: 'refresh_token', value: data['refresh_token']);
+        // 토큰 저장 (카카오 로그인과 동일한 로직)
+        await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
+        await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        // 신규 유저 여부 반환(UI에서 라우팅 분기 처리에 사용)
-        return data['is_new_user'];
+        return true; // 로그인 성공
+      }
+      
+      return false; // 서버에서 success: false를 보낸 경우 (비번 틀림 등)
+    } catch (e) {
+      // 500 에러나 네트워크 에러 발생 시 에러를 던져서 컨트롤러에서 처리하게 함
+      throw Exception('네트워크 오류: $e');
+    }
+  }
+
+  // --- 2. 카카오 로그인 API 호출 (기존 유지) ---
+  Future<bool> loginWithKakao(String kakaoToken) async {
+    try {
+      final response = await _dio.post('/api/auth/kakao', data: {'kakaoToken': kakaoToken});
+
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        
+        await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
+        await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
+
+        return data['newUser'];
       }
       
       throw Exception('로그인 응답 처리 실패');
     } catch (e) {
-      // 에러 핸들링 로직
       throw Exception('네트워크 오류: $e');
     }
   }
   
-  // 로그아웃 API 호출
+  // --- 3. 로그아웃 (기존 유지) ---
   Future<void> logout() async {
     try {
       await _dio.post('/api/auth/logout');
     } catch (e) {
-      // 서버에서 에러가 나더라도 기기 내 토큰은 무조건 지움
+      // 에러 무시
     } finally {
       await _storage.deleteAll(); 
     }

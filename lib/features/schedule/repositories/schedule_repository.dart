@@ -28,14 +28,16 @@ class ScheduleRepository {
     required String title,
     required String scheduleType,
     required String scheduledDate,
+    required int companyId,
     String? memo,
   }) async {
     final response = await _dio.post(
       '/api/schedules',
       data: {
         'title': title,
-        'schedule_type': scheduleType,
-        'scheduled_date': scheduledDate,
+        'scheduleType': scheduleType,
+        'companyId': companyId,
+        'scheduledDate': scheduledDate,
         if (memo != null) 'memo': memo,
       },
     );

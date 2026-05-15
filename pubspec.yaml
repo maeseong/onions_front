@@ -18,6 +18,7 @@ dependencies:
   table_calendar: ^3.2.0
   intl: ^0.20.2
   flutter_secure_storage: ^10.1.0
+  kakao_flutter_sdk_user: ^2.0.0+1
 
 dev_dependencies:
   flutter_test:

@@ -44,3 +44,24 @@ class RoadmapExpandedNotifier extends Notifier<bool> {
   bool build() => false;
   void toggle() => state = !state;
 }
+
+final questActionProvider = Provider<QuestActionService>((ref) {
+  return QuestActionService(ref);
+});
+
+class QuestActionService {
+  final Ref _ref;
+  QuestActionService(this._ref);
+
+  Future<void> completeQuest(int questId) async {
+    final repository = _ref.read(homeRepositoryProvider);
+    
+    // 1. 백엔드에 완료 처리 요청
+    await repository.updateQuestStatus(questId, 'completed');
+    
+    // 2. 요청이 성공하면 기존 데이터를 무효화하여 서버에서 다시 불러오게 함
+    _ref.invalidate(growthProvider);
+    _ref.invalidate(mainQuestProvider);
+    _ref.invalidate(subQuestProvider);
+  }
+}

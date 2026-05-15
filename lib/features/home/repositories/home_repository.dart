@@ -45,4 +45,16 @@ class HomeRepository {
     }
     throw Exception('퀘스트 조회 실패');
   }
+  
+  // 퀘스트 상태 변경 (완료 처리)
+  Future<void> updateQuestStatus(int questId, String status) async {
+    final response = await _dio.patch(
+      '/api/quests/$questId/status',
+      data: {'status': status},
+    );
+    
+    if (response.data['success'] != true) {
+      throw Exception('퀘스트 상태 변경 실패');
+    }
+  }
 }

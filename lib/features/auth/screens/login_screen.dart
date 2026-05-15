@@ -3,14 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 
-class LoginScreen extends ConsumerWidget {
+// 컨트롤러 관리를 위해 ConsumerStatefulWidget으로 변경합니다.
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  // 1. 입력값을 제어할 컨트롤러 선언
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    // 메모리 누수 방지를 위해 컨트롤러 해제
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    
-    // AuthController의 현재 상태(로딩 중인지 여부)를 구독
     final isLoading = ref.watch(authControllerProvider);
 
     return Scaffold(
@@ -33,6 +49,8 @@ class LoginScreen extends ConsumerWidget {
               const Text('이메일', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextField(
+                controller: _emailController, // 컨트롤러 연결
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   hintText: '이메일을 입력해주세요',
                   hintStyle: TextStyle(color: Colors.grey[400]),
@@ -48,6 +66,7 @@ class LoginScreen extends ConsumerWidget {
               const Text('비밀번호', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextField(
+                controller: _passwordController, // 컨트롤러 연결
                 obscureText: true,
                 decoration: InputDecoration(
                   hintText: '비밀번호를 입력해주세요',
@@ -70,20 +89,45 @@ class LoginScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // 일반 로그인 버튼
+              // 일반 로그인 버튼 (수정됨)
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
-                    context.go('/home');
+                  onPressed: isLoading ? null : () async {
+                    // 2. 유효성 검사 (빈칸 확인)
+                    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('이메일과 비밀번호를 모두 입력해주세요.')),
+                      );
+                      return;
+                    }
+
+                    // 3. 서버 로그인 시도 (auth_provider에 loginWithEmail 함수가 있다고 가정)
+                    final success = await ref.read(authControllerProvider.notifier).loginWithEmail(
+                      _emailController.text.trim(),
+                      _passwordController.text.trim(),
+                    );
+
+                    // 4. 결과에 따른 처리
+                    if (context.mounted) {
+                      if (success) {
+                        context.go('/home'); // 성공 시에만 이동!
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('로그인 실패: 이메일 또는 비밀번호를 확인해주세요.')),
+                        );
+                      }
+                    }
                   },
-                  child: const Text('로그인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: isLoading 
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('로그인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 32),
 
-              // 소셜 로그인 영역
+              // 간편 로그인 영역 (기존과 동일)
               Row(
                 children: [
                   Expanded(child: Divider(color: Colors.grey[200])),
@@ -96,37 +140,29 @@ class LoginScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // 소셜 로그인 버튼
+              // 소셜 로그인 버튼 (기존과 동일)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 카카오톡 로그인 연동
                   InkWell(
-                    // 로딩 중일 때는 버튼 터치 방지
                     onTap: isLoading ? null : () async {
-                      // 카카오 로그인 API 호출
                       final isNewUser = await ref.read(authControllerProvider.notifier).loginWithKakao();
-                      
-                      // 결과에 따른 분기 라우팅
                       if (context.mounted && isNewUser != null) {
                         if (isNewUser) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신규 유저입니다. 온보딩으로 이동합니다.')));
                           context.go('/onboarding');
                         } else {
                           context.go('/home');
                         }
                       } else if (context.mounted && isNewUser == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인에 실패했습니다.')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('카카오 로그인에 실패했습니다.')));
                       }
                     },
                     child: _buildClippedImageSocialButton(
                       imagePath: 'assets/images/kakao_logo.jpg',
-                      isLoading: isLoading, // 로딩 상태 전달
+                      isLoading: isLoading,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  
-                  // 구글
                   _buildClippedImageSocialButton(
                     backgroundColor: Colors.white,
                     imagePath: 'assets/images/google_logo.webp',
@@ -134,8 +170,6 @@ class LoginScreen extends ConsumerWidget {
                     iconPadding: 10.0,
                   ),
                   const SizedBox(width: 16),
-                  
-                  // 애플
                   _buildImageSocialButton(
                     backgroundColor: Colors.black,
                     iconData: Icons.apple,
@@ -145,7 +179,6 @@ class LoginScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 40),
 
-              // 회원가입 안내
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -163,7 +196,7 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 
-  // 이미지 기반 소셜 버튼을 생성하는 함수
+  // --- 하단 헬퍼 함수들은 기존 코드와 동일 ---
   Widget _buildImageSocialButton({required Color backgroundColor, required IconData iconData, required Color iconColor, bool hasBorder = false}) {
     return Container(
       width: 56,
@@ -173,9 +206,7 @@ class LoginScreen extends ConsumerWidget {
         shape: BoxShape.circle,
         border: hasBorder ? Border.all(color: Colors.grey[300]!) : null,
       ),
-      child: Center(
-        child: Icon(iconData, color: iconColor, size: 32),
-      ),
+      child: Center(child: Icon(iconData, color: iconColor, size: 32)),
     );
   }
 
@@ -187,7 +218,6 @@ class LoginScreen extends ConsumerWidget {
     bool isLoading = false,
   }) {
     return Opacity(
-      // 로딩 중일 때 버튼을 흐리게 보이도록 처리
       opacity: isLoading ? 0.5 : 1.0,
       child: Container(
         width: 56,
@@ -203,11 +233,7 @@ class LoginScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(iconPadding),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
-                  child: Image.asset(
-                    imagePath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey),
-                  ),
+                  child: Image.asset(imagePath, fit: BoxFit.cover),
                 ),
               ),
       ),
