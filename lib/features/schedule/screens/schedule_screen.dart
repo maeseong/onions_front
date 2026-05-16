@@ -14,7 +14,10 @@ class ScheduleScreen extends ConsumerWidget {
     final focusedDay = ref.watch(focusedDayProvider);
     final selectedDay = ref.watch(selectedDayProvider);
     final yearMonth = '${focusedDay.year}-${focusedDay.month}';
+    
     final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
+    // 다가오는 일정 파이프라인
+    final upcomingAsync = ref.watch(upcomingScheduleProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -37,9 +40,9 @@ class ScheduleScreen extends ConsumerWidget {
         ],
       ),
       body: scheduleAsync.when(
-        loading: () => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, [], yearMonth),
-        error: (e, _) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, [], yearMonth),
-        data: (schedules) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, schedules, yearMonth),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => const Center(child: Text('일정을 불러오지 못했어요')),
+        data: (schedules) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, schedules, yearMonth, upcomingAsync),
       ),
     );
   }
@@ -58,12 +61,22 @@ class ScheduleScreen extends ConsumerWidget {
     return eventMap[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, Color primaryColor, DateTime focusedDay, DateTime? selectedDay, List<dynamic> schedules, String yearMonth) {
+Widget _buildBody(
+    BuildContext context, 
+    WidgetRef ref, 
+    Color primaryColor, 
+    DateTime focusedDay, 
+    DateTime? selectedDay, 
+    List<dynamic> schedules, 
+    String yearMonth,
+    AsyncValue<List<dynamic>> upcomingAsync,
+  ) {
     final eventMap = _buildEventMap(schedules);
     final selectedEvents = selectedDay != null ? _getEventsForDay(selectedDay, eventMap) : [];
 
     return SingleChildScrollView(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 캘린더 카드
           Container(
@@ -144,10 +157,41 @@ class ScheduleScreen extends ConsumerWidget {
             ),
           ),
 
-          // 선택된 날짜 일정 리스트
+          // 다가오는 일정 섹션
+          upcomingAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (e, _) => const SizedBox.shrink(),
+            data: (upcomingSchedules) {
+              if (upcomingSchedules.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('다가오는 일정 🚨', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    ...upcomingSchedules.map((event) => _buildScheduleItem(
+                      context: context,
+                      ref: ref,
+                      title: event['title'] ?? '',
+                      date: event['scheduled_date'] ?? '',
+                      dDay: 'D-${event['d_day'] ?? '?'}',
+                      type: event['schedule_type'] ?? '',
+                      scheduleId: event['schedule_id'],
+                      yearMonth: yearMonth,
+                    )).toList(),
+                    const Divider(height: 32, color: Colors.transparent),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // 선택된 날짜 일정 리스트 (주요 일정)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -161,7 +205,10 @@ class ScheduleScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 selectedEvents.isEmpty
-                    ? const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Text('해당 날짜에 일정이 없습니다.'))
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40), 
+                        child: Center(child: Text('해당 날짜에 일정이 없습니다.', style: TextStyle(color: Colors.grey)))
+                      )
                     : ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -194,10 +241,8 @@ class ScheduleScreen extends ConsumerWidget {
     final TextEditingController memoController = TextEditingController();
     String selectedType = '기타';
     
-    // 💡 1. 선택된 기업 ID를 저장할 변수 (초기값은 null)
     int? selectedCompanyId; 
     
-    // 💡 임시 목표 기업 리스트 (나중에는 Riverpod으로 백엔드에서 불러온 데이터를 쓰시면 됩니다!)
     final List<Map<String, dynamic>> dummyCompanies = [
       {'id': 1, 'name': '카카오'},
       {'id': 2, 'name': '네이버'},
@@ -234,7 +279,6 @@ class ScheduleScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   
-                  // 💡 2. 기업 선택 드롭다운 UI 추가
                   const Text('지원 기업', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Container(
@@ -317,7 +361,6 @@ class ScheduleScreen extends ConsumerWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // 💡 3. 유효성 검사 (제목과 기업을 선택했는지 확인)
                         if (titleController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요.')));
                           return;
@@ -329,15 +372,18 @@ class ScheduleScreen extends ConsumerWidget {
 
                         try {
                           final repository = ref.read(scheduleRepositoryProvider);
-                          // 💡 4. 백엔드로 데이터 쏘기 (companyId 포함!)
                           await repository.addSchedule(
                             title: titleController.text.trim(),
                             scheduleType: selectedType,
-                            companyId: selectedCompanyId!, // 방금 선택한 기업 ID 전달
+                            companyId: selectedCompanyId!,
                             scheduledDate: DateFormat('yyyy-MM-dd').format(selectedDay),
                             memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
                           );
+                          
+                          // 일정을 추가한 뒤에는 달력 데이터뿐만 아니라 다가오는 일정도 갱신
                           ref.invalidate(scheduleProvider(yearMonth));
+                          ref.invalidate(upcomingScheduleProvider);
+                          
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
                           if (context.mounted) {
@@ -405,6 +451,7 @@ class ScheduleScreen extends ConsumerWidget {
                               final repository = ref.read(scheduleRepositoryProvider);
                               await repository.deleteSchedule(event['schedule_id']);
                               ref.invalidate(scheduleProvider(yearMonth));
+                              ref.invalidate(upcomingScheduleProvider); // 삭제 시에도 갱신
                               if (context.mounted) Navigator.pop(context);
                             } catch (e) {
                               if (context.mounted) {
@@ -476,6 +523,7 @@ class ScheduleScreen extends ConsumerWidget {
                                   final repository = ref.read(scheduleRepositoryProvider);
                                   await repository.deleteSchedule(scheduleId);
                                   ref.invalidate(scheduleProvider(yearMonth));
+                                  ref.invalidate(upcomingScheduleProvider);
                                 } catch (e) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요')));

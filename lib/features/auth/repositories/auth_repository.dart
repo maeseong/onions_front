@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
@@ -17,6 +18,18 @@ class AuthRepository {
 
   // 이메일 로그인 API 호출
   Future<bool> loginWithEmail(String email, String password) async {
+    // [프론트엔드 테스트 전용] 이메일에 'master', 비밀번호에 '1234'를 입력하면 백엔드 없이 바로 통과
+    if (email == 'master' && password == '1234') {
+      debugPrint('[테스트 모드] 마스터 계정으로 로그인 (백엔드 통신 생략)');
+      
+      // 기기에 가짜 토큰과 온보딩 완료 징표 삽입
+      await _storage.write(key: AppConstants.accessTokenKey, value: 'fake_master_access_token');
+      await _storage.write(key: AppConstants.refreshTokenKey, value: 'fake_master_refresh_token');
+      await _storage.write(key: 'isOnboarded', value: 'true'); // 온보딩 패스하고 홈으로 직행
+      
+      return true; 
+    }
+
     try {
       final response = await _dio.post('/api/auth/login', data: {
         'email': email,
@@ -28,6 +41,9 @@ class AuthRepository {
         
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
+
+        // 이메일 로그인은 이미 가입된 회원이므로 온보딩 완료 상태(true)로 로컬에 저장
+        await _storage.write(key: 'isOnboarded', value: 'true');
 
         return true;
       }
@@ -48,10 +64,18 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        // 백엔드 명세에 맞춰 newUser와 user 내부의 isOnboarded 상태를 맵으로 묶어 반환
+        // 'isNewUser'와 'newUser' 둘 다 체크
+        final bool isNewUser = data['isNewUser'] ?? data['newUser'] ?? false;
+        
+        // 'isOnboarded'와 'onboarded' 둘 다 체크
+        final bool isOnboarded = data['user']?['isOnboarded'] ?? data['user']?['onboarded'] ?? false;
+
+        // 앱 재진입 시 기억할 수 있도록 로컬 저장소에 온보딩 완료 여부 저장
+        await _storage.write(key: 'isOnboarded', value: isOnboarded.toString());
+
         return {
-          'isNewUser': data['newUser'] ?? false,
-          'isOnboarded': data['user']?['isOnboarded'] ?? false,
+          'isNewUser': isNewUser,
+          'isOnboarded': isOnboarded,
         };
       }
       throw Exception('로그인 응답 처리 실패');
@@ -60,9 +84,9 @@ class AuthRepository {
     }
   }
 
+  // 구글 로그인 API 호출
   Future<Map<String, bool>> loginWithGoogle(String googleToken) async {
     try {
-      // 백엔드 명세에 따라 주소는 '/api/auth/google' 등으로 수정 팔요
       final response = await _dio.post('/api/auth/google', data: {'googleToken': googleToken});
 
       if (response.data['success'] == true) {
@@ -71,9 +95,18 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
+        // 'isNewUser'와 'newUser' 둘 다 체크
+        final bool isNewUser = data['isNewUser'] ?? data['newUser'] ?? false;
+        
+        // 'isOnboarded'와 'onboarded' 둘 다 체크
+        final bool isOnboarded = data['user']?['isOnboarded'] ?? data['user']?['onboarded'] ?? false;
+
+        // 앱 재진입 시 기억할 수 있도록 로컬 저장소에 온보딩 완료 여부 저장
+        await _storage.write(key: 'isOnboarded', value: isOnboarded.toString());
+
         return {
-          'isNewUser': data['newUser'] ?? false,
-          'isOnboarded': data['user']?['isOnboarded'] ?? false,
+          'isNewUser': isNewUser,
+          'isOnboarded': isOnboarded,
         };
       }
       throw Exception('구글 로그인 응답 처리 실패');

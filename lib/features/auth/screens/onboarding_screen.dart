@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -58,7 +59,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  // 각 페이지별 모든 항목이 빠짐없이 입력/선택되었는지 검사하는 Getter
+  // 각 페이지별 모든 항목이 입력/선택되었는지 검사하는 Getter
   bool get _isNextButtonEnabled {
     if (_currentPage == 0) {
       return _nameController.text.trim().isNotEmpty && _selectedGrade != null;
@@ -115,6 +116,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         'techStack': "",
         'targetCompanyIds': [],
       });
+
+      // 온보딩 서버 제출 성공 시 로컬에도 온보딩 완료 상태 기록
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'isOnboarded', value: 'true');
+
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
