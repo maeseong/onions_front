@@ -29,6 +29,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final TextEditingController _awardController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // 입력 상태를 실시간으로 감지하여 버튼 활성화 상태를 업데이트
+    _nameController.addListener(_updateState);
+    _gpaController.addListener(_updateState);
+    _toeicController.addListener(_updateState);
+    _certController.addListener(_updateState);
+    _projectController.addListener(_updateState);
+    _internController.addListener(_updateState);
+    _awardController.addListener(_updateState);
+  }
+
+  void _updateState() {
+    setState(() {});
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _nameController.dispose();
@@ -39,6 +56,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _internController.dispose();
     _awardController.dispose();
     super.dispose();
+  }
+
+  // 각 페이지별 모든 항목이 빠짐없이 입력/선택되었는지 검사하는 Getter
+  bool get _isNextButtonEnabled {
+    if (_currentPage == 0) {
+      return _nameController.text.trim().isNotEmpty && _selectedGrade != null;
+    } else if (_currentPage == 1) {
+      return _selectedJob != null && _selectedCompanyType != null;
+    } else if (_currentPage == 2) {
+      return _gpaController.text.trim().isNotEmpty &&
+          _toeicController.text.trim().isNotEmpty &&
+          _certController.text.trim().isNotEmpty &&
+          _projectController.text.trim().isNotEmpty &&
+          _internController.text.trim().isNotEmpty &&
+          _awardController.text.trim().isNotEmpty;
+    }
+    return true; // 마지막 요약 페이지는 항상 활성화
   }
 
   void _nextPage() {
@@ -160,18 +194,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _nextPage,
+                  // 조건 미충족 시 onPressed에 null을 전달하여 버튼을 완전히 비활성화
+                  onPressed: (_isLoading || !_isNextButtonEnabled) ? null : _nextPage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
+                    disabledBackgroundColor: Colors.grey[300], 
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
-                    _currentPage == 3 ? '시작하기 🌱' : '다음',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                          _currentPage == 3 ? '시작하기 🌱' : '다음',
+                          style: TextStyle(
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold,
+                            color: (_isLoading || !_isNextButtonEnabled) ? Colors.grey[500] : Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ),
