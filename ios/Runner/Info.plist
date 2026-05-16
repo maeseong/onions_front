@@ -84,5 +84,18 @@
         <string>kakaolink</string>
         <string>kakaoplus</string>
     </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.302346923713-lnvlr4sngf0hisnf7svfcf7eg4gfhdqg</string>
+            </array>
+        </dict>
+    </array>
+    <key>GIDClientID</key>
+    <string>302346923713-lnvlr4sngf0hisnf7svfcf7eg4gfhdqg.apps.googleusercontent.com</string>
     </dict>
 </plist>

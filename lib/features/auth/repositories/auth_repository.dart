@@ -15,10 +15,9 @@ class AuthRepository {
 
   AuthRepository(this._dio, this._storage);
 
-  // --- 1. 이메일 로그인 API 호출 (새로 추가) ---
+  // 이메일 로그인 API 호출
   Future<bool> loginWithEmail(String email, String password) async {
     try {
-      // 백엔드 주소는 명세서에 따라 '/api/auth/login' 등으로 수정이 필요할 수 있습니다.
       final response = await _dio.post('/api/auth/login', data: {
         'email': email,
         'password': password,
@@ -27,22 +26,19 @@ class AuthRepository {
       if (response.data['success'] == true) {
         final data = response.data['data'];
         
-        // 토큰 저장 (카카오 로그인과 동일한 로직)
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        return true; // 로그인 성공
+        return true;
       }
-      
-      return false; // 서버에서 success: false를 보낸 경우 (비번 틀림 등)
+      return false;
     } catch (e) {
-      // 500 에러나 네트워크 에러 발생 시 에러를 던져서 컨트롤러에서 처리하게 함
       throw Exception('네트워크 오류: $e');
     }
   }
 
-  // --- 2. 카카오 로그인 API 호출 (기존 유지) ---
-  Future<bool> loginWithKakao(String kakaoToken) async {
+  // 카카오 로그인 API 호출
+  Future<Map<String, bool>> loginWithKakao(String kakaoToken) async {
     try {
       final response = await _dio.post('/api/auth/kakao', data: {'kakaoToken': kakaoToken});
 
@@ -52,16 +48,41 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        return data['newUser'];
+        // 백엔드 명세에 맞춰 newUser와 user 내부의 isOnboarded 상태를 맵으로 묶어 반환
+        return {
+          'isNewUser': data['newUser'] ?? false,
+          'isOnboarded': data['user']?['isOnboarded'] ?? false,
+        };
       }
-      
       throw Exception('로그인 응답 처리 실패');
     } catch (e) {
       throw Exception('네트워크 오류: $e');
     }
   }
+
+  Future<Map<String, bool>> loginWithGoogle(String googleToken) async {
+    try {
+      // 백엔드 명세에 따라 주소는 '/api/auth/google' 등으로 수정 팔요
+      final response = await _dio.post('/api/auth/google', data: {'googleToken': googleToken});
+
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        
+        await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
+        await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
+
+        return {
+          'isNewUser': data['newUser'] ?? false,
+          'isOnboarded': data['user']?['isOnboarded'] ?? false,
+        };
+      }
+      throw Exception('구글 로그인 응답 처리 실패');
+    } catch (e) {
+      throw Exception('네트워크 오류: $e');
+    }
+  }
   
-  // --- 3. 로그아웃 (기존 유지) ---
+  // 로그아웃
   Future<void> logout() async {
     try {
       await _dio.post('/api/auth/logout');

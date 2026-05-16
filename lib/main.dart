@@ -6,7 +6,7 @@ import 'core/router/app_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
-  // 비동기 작업(초기화 등)을 위해 바인딩 확인
+  // 비동기 작업을 위해 바인딩 확인
   WidgetsFlutterBinding.ensureInitialized(); 
   
   // 카카오 SDK 초기화 (발급받은 네이티브 앱 키 적용)

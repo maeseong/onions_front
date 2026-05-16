@@ -1,76 +1,111 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../repositories/auth_repository.dart';
-import 'package:flutter/services.dart'; 
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart'; 
 
 final authControllerProvider = NotifierProvider<AuthController, bool>(() {
   return AuthController();
 });
 
 class AuthController extends Notifier<bool> {
+  bool _isGoogleInitialized = false;
+
   @override
   bool build() {
-    return false; // 초기 상태: 로딩 중 아님
+    return false;
   }
 
-  // --- 1. 이메일 로그인 함수 (새로 추가) ---
+  // 이메일 로그인 함수
   Future<bool> loginWithEmail(String email, String password) async {
-    state = true; // 로딩 시작 (화면에 인디케이터 표시)
-    print('[디버그] 이메일 로그인 시도: $email');
-
+    state = true;
     try {
       final repository = ref.read(authRepositoryProvider);
-      
-      // repository에 이메일 로그인 요청 (성공 시 true 반환 가정)
       final success = await repository.loginWithEmail(email, password);
-      
-      state = false; // 로딩 종료
+      state = false;
       return success;
     } catch (e) {
-      print('[이메일 로그인 에러 발생] : $e');
-      state = false; 
-      return false; 
+      state = false;
+      rethrow;
     }
   }
 
-  // --- 2. 카카오 로그인 함수 (기존 코드 유지) ---
-  Future<bool?> loginWithKakao() async {
-    state = true; 
-    print('[디버그 1] 카카오 로그인 함수 시작'); 
-    
+  // 카카오 로그인 함수
+  Future<Map<String, bool>?> loginWithKakao() async {
+    state = true;
     try {
       OAuthToken token;
-      
+
       if (await isKakaoTalkInstalled()) {
         try {
-          print('[디버그 2] 카톡 앱으로 로그인 시도');
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (error) {
           if (error is PlatformException && error.code == 'CANCELED') {
             state = false;
             return null;
           }
-          print('[디버그 3] 카톡 앱 실패, 웹 브라우저 로그인 시도');
           token = await UserApi.instance.loginWithKakaoAccount();
         }
       } else {
-        print('[디버그 4] 카톡 앱 없음, 웹 브라우저 로그인 시도'); 
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
-      print('[디버그 5] 카카오 토큰 발급 성공, 서버로 보냄'); 
-
       final repository = ref.read(authRepositoryProvider);
-      final isNewUser = await repository.loginWithKakao(token.accessToken);
+      final loginResult = await repository.loginWithKakao(token.accessToken);
+
+      state = false;
+      return loginResult;
+    } catch (e) {
+      state = false;
+      rethrow;
+    }
+  }
+
+  // 구글 로그인 함수
+  Future<Map<String, bool>?> loginWithGoogle() async {
+    state = true;
+    try {
+      debugPrint('[디버그] 구글 로그인 시도');
+      final googleSignIn = GoogleSignIn.instance;
       
-      print('[디버그 6] 백엔드 서버 통신 성공'); 
+      // 초기화가 안 되어 있다면 한 번 초기화
+      if (!_isGoogleInitialized) {
+        await googleSignIn.initialize(
+          serverClientId: '302346923713-87l248atql2n5gssqobke52sdlh3nsl0.apps.googleusercontent.com'
+        );
+        _isGoogleInitialized = true;
+      }
+      
+      late final GoogleSignInAccount googleUser;
+      try {
+        googleUser = await googleSignIn.authenticate();
+      } catch (e) {
+        // authenticate()는 사용자가 로그인을 취소하면 에러를 던짐
+        debugPrint('[디버그] 사용자가 구글 로그인을 취소했거나 창이 닫힘: $e');
+        state = false;
+        return null; // null을 반환하여 UI 로딩을 해제
+      }
+
+      // 인증 정보에서 토큰 추출
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? token = googleAuth.idToken;
+      
+      if (token == null) {
+        throw Exception('구글 토큰을 가져오지 못했습니다.');
+      }
+
+      debugPrint('[디버그] 구글 토큰 발급 완료, 서버로 전송');
+      final repository = ref.read(authRepositoryProvider);
+      final loginResult = await repository.loginWithGoogle(token);
+      
       state = false; 
-      return isNewUser; 
+      return loginResult; 
       
     } catch (e) {
-      print('[에러 발생] : $e'); 
+      debugPrint('[Provider 에러] 구글 로그인 실패: $e');
       state = false; 
-      return null;
+      rethrow; 
     }
   }
 }
