@@ -146,6 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   // 카카오 로그인 버튼
                   InkWell(
+                    borderRadius: BorderRadius.circular(28),
                     onTap: isLoading ? null : () async {
                       try {
                         final loginResult = await ref.read(authControllerProvider.notifier).loginWithKakao();
@@ -176,7 +177,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('로그인 실패: 서버 오류가 발생 -> 콘솔 메시지를 확인')),
+                            const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
                           );
                         }
                       }
@@ -185,10 +186,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       imagePath: 'assets/images/kakao_logo.jpg',
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 24), 
                   
                   // 구글 로그인 버튼
                   InkWell(
+                    borderRadius: BorderRadius.circular(28),
                     onTap: isLoading ? null : () async {
                       try {
                         final loginResult = await ref.read(authControllerProvider.notifier).loginWithGoogle();
@@ -217,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('구글 로그인 중 오류가 발생 -> 콘솔 메시지를 확인')),
+                            const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
                           );
                         }
                       }
@@ -228,14 +230,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       hasBorder: true,
                       iconPadding: 10.0,
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  
-                  // 애플 로그인 버튼
-                  _buildImageSocialButton(
-                    backgroundColor: Colors.black,
-                    iconData: Icons.apple,
-                    iconColor: Colors.white,
                   ),
                 ],
               ),
@@ -255,19 +249,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildImageSocialButton({required Color backgroundColor, required IconData iconData, required Color iconColor, bool hasBorder = false}) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-        border: hasBorder ? Border.all(color: Colors.grey[300]!) : null,
-      ),
-      child: Center(child: Icon(iconData, color: iconColor, size: 32)),
     );
   }
 
