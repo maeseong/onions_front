@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spec_check/features/home/models/career_growth_model.dart';
 import '../widgets/ground.dart';
 import '../providers/home_provider.dart';
 import 'roadmap_detail_screen.dart';
@@ -13,23 +14,23 @@ class HomeScreen extends ConsumerWidget {
     Offset(104.0, 26.0),
     Offset(182.0, 39.0),
     Offset(130.0, 39.0),
-    Offset(78.0,  39.0),
+    Offset(78.0, 39.0),
     Offset(208.0, 52.0),
     Offset(156.0, 52.0),
     Offset(104.0, 52.0),
-    Offset(52.0,  52.0),
+    Offset(52.0, 52.0),
     Offset(234.0, 65.0),
     Offset(182.0, 65.0),
     Offset(130.0, 65.0),
-    Offset(78.0,  65.0),
-    Offset(26.0,  65.0),
+    Offset(78.0, 65.0),
+    Offset(26.0, 65.0),
     Offset(208.0, 78.0),
     Offset(156.0, 78.0),
     Offset(104.0, 78.0),
-    Offset(52.0,  78.0),
+    Offset(52.0, 78.0),
     Offset(182.0, 91.0),
     Offset(130.0, 91.0),
-    Offset(78.0,  91.0),
+    Offset(78.0, 91.0),
     Offset(156.0, 104.0),
     Offset(104.0, 104.0),
     Offset(130.0, 117.0),
@@ -39,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
     return List.generate(count.clamp(0, _allSlots.length), (i) {
       return Positioned(
         left: _allSlots[i].dx - 16,
-        top:  _allSlots[i].dy - 24,
+        top: _allSlots[i].dy - 24,
         child: const Text('🌳', style: TextStyle(fontSize: 32)),
       );
     });
@@ -50,9 +51,7 @@ class HomeScreen extends ConsumerWidget {
     final primaryColor = Theme.of(context).primaryColor;
     final growthAsync = ref.watch(growthProvider);
     final questTab = ref.watch(questTabProvider);
-    final questAsync = questTab == 0
-        ? ref.watch(mainQuestProvider)
-        : ref.watch(subQuestProvider);
+    final questAsync = questTab == 0 ? ref.watch(mainQuestProvider) : ref.watch(subQuestProvider);
     final isExpanded = ref.watch(roadmapExpandedProvider);
     final roadmapAsync = ref.watch(roadmapProvider);
 
@@ -64,26 +63,20 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // 내 성장 필드
               growthAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => const Center(child: Text('성장도를 불러오지 못했어요')),
-                data: (growth) {
-                  final completedQuests = growth['completed_quests'] ?? 0;
-                  final totalQuests = growth['total_quests'] ?? 20;
-                  final totalExp = growth['total_exp'] ?? 0;
-                  final nextLevelExp = growth['next_level_exp'] ?? 1000;
+                data: (growthJson) {
+                  final growthData = CareerGrowthModel.fromJson(growthJson);
 
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.grey[200]!),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                        ]
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey[200]!),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
                     ),
                     child: Column(
                       children: [
@@ -95,13 +88,15 @@ class HomeScreen extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20)
                               ),
                               child: Row(
                                 children: [
                                   Icon(Icons.eco, size: 16, color: primaryColor),
                                   const SizedBox(width: 4),
-                                  Text('$completedQuests/$totalQuests', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                                  Text('${growthData.completedQuests}/${growthData.totalQuests}',
+                                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                                  ),
                                 ],
                               ),
                             ),
@@ -125,7 +120,7 @@ class HomeScreen extends ConsumerWidget {
                                     clipBehavior: Clip.none,
                                     children: [
                                       const GroundPlot(width: 260, height: 130, elevation: 25),
-                                      ..._buildTrees(completedQuests),
+                                      ..._buildTrees(growthData.completedQuests),
                                     ],
                                   ),
                                 ),
@@ -137,7 +132,7 @@ class HomeScreen extends ConsumerWidget {
 
                         // 경험치 바
                         LinearProgressIndicator(
-                          value: nextLevelExp > 0 ? totalExp / nextLevelExp : 0,
+                          value: growthData.nextLevelExp > 0 ? growthData.totalExp / growthData.nextLevelExp : 0,
                           backgroundColor: Colors.grey[200],
                           color: primaryColor,
                           minHeight: 12,
@@ -151,10 +146,16 @@ class HomeScreen extends ConsumerWidget {
                               children: [
                                 const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.black54),
                                 const SizedBox(width: 4),
-                                Text('완료한 퀘스트 ${completedQuests}개', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
+                                Text(
+                                  '완료한 퀘스트 ${growthData.completedQuests}개',
+                                  style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+                                ),
                               ],
                             ),
-                            Text('목표까지 ${totalQuests - completedQuests}개', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500)),
+                            Text(
+                              '목표까지 ${growthData.totalQuests - growthData.completedQuests}개',
+                              style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+                            ),
                           ],
                         ),
                       ],
@@ -178,10 +179,7 @@ class HomeScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        isExpanded ? '로드맵 접기' : '로드맵 펼치기',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      Text(isExpanded ? '로드맵 접기' : '로드맵 펼치기', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
                     ],
                   ),
@@ -216,17 +214,14 @@ class HomeScreen extends ConsumerWidget {
                               Expanded(
                                 child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               ),
-                              Text('$progressRate%', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                              Text(
+                                '$progressRate%',
+                                style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          LinearProgressIndicator(
-                            value: progressRate / 100,
-                            backgroundColor: Colors.grey[200],
-                            color: primaryColor,
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                          LinearProgressIndicator(value: progressRate / 100, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 8, borderRadius: BorderRadius.circular(4)),
                           const SizedBox(height: 20),
 
                           // 단계 리스트
@@ -237,12 +232,7 @@ class HomeScreen extends ConsumerWidget {
                             final isLast = index == stages.length - 1;
 
                             return GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RoadmapDetailScreen(stage: stage),
-                                ),
-                              ),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RoadmapDetailScreen(stage: stage))),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -250,23 +240,12 @@ class HomeScreen extends ConsumerWidget {
                                   Column(
                                     children: [
                                       Container(
-                                        width: 32, height: 32,
-                                        decoration: BoxDecoration(
-                                          color: isCompleted ? primaryColor : Colors.grey[200],
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          isCompleted ? Icons.check : Icons.radio_button_unchecked,
-                                          size: 16,
-                                          color: isCompleted ? Colors.white : Colors.grey,
-                                        ),
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(color: isCompleted ? primaryColor : Colors.grey[200], shape: BoxShape.circle),
+                                        child: Icon(isCompleted ? Icons.check : Icons.radio_button_unchecked, size: 16, color: isCompleted ? Colors.white : Colors.grey),
                                       ),
-                                      if (!isLast)
-                                        Container(
-                                          width: 2,
-                                          height: 48,
-                                          color: isCompleted ? primaryColor.withOpacity(0.3) : Colors.grey[200],
-                                        ),
+                                      if (!isLast) Container(width: 2, height: 48, color: isCompleted ? primaryColor.withOpacity(0.3) : Colors.grey[200]),
                                     ],
                                   ),
                                   const SizedBox(width: 16),
@@ -280,9 +259,7 @@ class HomeScreen extends ConsumerWidget {
                                         decoration: BoxDecoration(
                                           color: isCompleted ? primaryColor.withOpacity(0.05) : Colors.grey[50],
                                           borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: isCompleted ? primaryColor.withOpacity(0.2) : Colors.grey[200]!,
-                                          ),
+                                          border: Border.all(color: isCompleted ? primaryColor.withOpacity(0.2) : Colors.grey[200]!),
                                         ),
                                         child: Row(
                                           children: [
@@ -292,16 +269,10 @@ class HomeScreen extends ConsumerWidget {
                                                 children: [
                                                   Text(
                                                     stage['stage_name'] ?? '',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      color: isCompleted ? primaryColor : Colors.black87,
-                                                    ),
+                                                    style: TextStyle(fontWeight: FontWeight.bold, color: isCompleted ? primaryColor : Colors.black87),
                                                   ),
                                                   const SizedBox(height: 4),
-                                                  Text(
-                                                    stage['description'] ?? '',
-                                                    style: const TextStyle(color: Colors.black54, fontSize: 13),
-                                                  ),
+                                                  Text(stage['description'] ?? '', style: const TextStyle(color: Colors.black54, fontSize: 13)),
                                                 ],
                                               ),
                                             ),
@@ -323,9 +294,7 @@ class HomeScreen extends ConsumerWidget {
               ],
               const SizedBox(height: 24),
 
-              // ==========================================
               // 3. 퀘스트 탭 및 리스트
-              // ==========================================
               Row(
                 children: [
                   Expanded(
@@ -389,12 +358,14 @@ class HomeScreen extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _buildQuestCard(
+                          questId: quest['quest_id'] ?? 0,
                           title: quest['quest_name'] ?? '',
                           subtitle: quest['description'] ?? '',
                           tag: quest['category'] ?? '',
                           status: quest['status'] ?? 'not_started',
                           expReward: quest['exp_reward'] ?? 0,
                           context: context,
+                          ref: ref,
                         ),
                       );
                     }).toList(),
@@ -409,12 +380,14 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildQuestCard({
+    required int questId,
     required String title,
     required String subtitle,
     required String tag,
     required String status,
     required int expReward,
     required BuildContext context,
+    required WidgetRef ref,
   }) {
     final primaryColor = Theme.of(context).primaryColor;
 
@@ -477,10 +450,45 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Text(statusText, style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.bold)),
+                    
+                    // 클릭 가능한 통신 버튼으로 교체
+                    InkWell(
+                      onTap: status == 'in_progress' ? () async {
+                        try {
+                          // 백엔드로 완료 요청 보내기
+                          await ref.read(questActionProvider).completeQuest(questId);
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('퀘스트 완료! +$expReward XP 🌲')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('완료 처리에 실패했어요.')),
+                            );
+                          }
+                        }
+                      } : null, // 진행 중이 아니면 버튼 비활성화(클릭 안됨)
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          // 진행 중일 때는 primaryColor, 시작 전/완료는 회색 또는 투명도 조절
+                          color: status == 'in_progress' ? primaryColor : statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12)
+                        ),
+                        child: Text(
+                          // 진행 중일 때는 '완료하기', 나머지는 상태 텍스트(시작 전, 완료) 출력
+                          status == 'in_progress' ? '완료하기' : statusText, 
+                          style: TextStyle(
+                            fontSize: 12, 
+                            color: status == 'in_progress' ? Colors.white : statusColor, 
+                            fontWeight: FontWeight.bold
+                          )
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -498,23 +506,24 @@ class HomeScreen extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: isCompleted ? primaryColor : (isActive ? primaryColor.withOpacity(0.2) : Colors.grey[200]),
-              shape: BoxShape.circle,
-            ),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(color: isCompleted ? primaryColor : (isActive ? primaryColor.withOpacity(0.2) : Colors.grey[200]), shape: BoxShape.circle),
             child: Center(
-              child: isCompleted 
+              child: isCompleted
                   ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : Text('$step', style: TextStyle(color: isActive ? primaryColor : Colors.grey, fontWeight: FontWeight.bold)),
+                  : Text(
+                      '$step',
+                      style: TextStyle(color: isActive ? primaryColor : Colors.grey, fontWeight: FontWeight.bold),
+                    ),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              title, 
+              title,
               style: TextStyle(
-                fontSize: 16, 
+                fontSize: 16,
                 color: isCompleted ? Colors.grey : Colors.black87,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 decoration: isCompleted ? TextDecoration.lineThrough : null,

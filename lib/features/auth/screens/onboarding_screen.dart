@@ -70,14 +70,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await dio.post('/api/users/onboarding', data: {
         'name': _nameController.text.trim(),
         'grade': _selectedGrade,
-        'job_name': _selectedJob,
-        'preferred_company_type': _selectedCompanyType,
+        'jobName': _selectedJob,
+        // 'preferred_company_type': _selectedCompanyType, (API 명세서에 없어서 우선 주석 처리)
         'gpa': double.tryParse(_gpaController.text) ?? 0,
-        'toeic_score': int.tryParse(_toeicController.text) ?? 0,
-        'certificate_count': int.tryParse(_certController.text) ?? 0,
-        'project_count': int.tryParse(_projectController.text) ?? 0,
-        'internship_count': int.tryParse(_internController.text) ?? 0,
-        'award_count': int.tryParse(_awardController.text) ?? 0,
+        'toeicScore': int.tryParse(_toeicController.text) ?? 0,
+        'certificateCount': int.tryParse(_certController.text) ?? 0,
+        'projectCount': int.tryParse(_projectController.text) ?? 0,
+        'internshipCount': int.tryParse(_internController.text) ?? 0,
+        'awardCount': int.tryParse(_awardController.text) ?? 0,
+        'techStack': "",
+        'targetCompanyIds': [],
       });
       if (mounted) context.go('/home');
     } catch (e) {
