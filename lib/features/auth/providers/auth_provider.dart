@@ -87,15 +87,26 @@ class AuthController extends Notifier<bool> {
         return null; // null을 반환하여 UI 로딩을 해제
       }
 
-      // 인증 정보에서 토큰 추출
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final String? token = googleAuth.idToken;
+      // 토큰 추출 로직 (Access Token 발급)
+      debugPrint('[디버그] 백엔드 userinfo 호출용 Access Token 권한 요청');
+      final scopes = ['email', 'profile', 'openid'];
       
-      if (token == null) {
-        throw Exception('구글 토큰을 가져오지 못했습니다.');
+      // 기기 내 캐시된 인증 정보 확인
+      GoogleSignInClientAuthorization? clientAuth =
+          await googleUser.authorizationClient.authorizationForScopes(scopes);
+
+      // 추가적인 유저 동의가 필요하여 null이 반환된 경우 명시적 권한 요청 창 표시
+      if (clientAuth == null) {
+        clientAuth = await googleUser.authorizationClient.authorizeScopes(scopes);
       }
 
-      debugPrint('[디버그] 구글 토큰 발급 완료, 서버로 전송');
+      final String? token = clientAuth.accessToken;
+      
+      if (token == null) {
+        throw Exception('구글 Access Token을 가져오지 못했습니다.');
+      }
+
+      debugPrint('[디버그] 구글 Access Token 발급 완료, 서버로 전송');
       final repository = ref.read(authRepositoryProvider);
       final loginResult = await repository.loginWithGoogle(token);
       
