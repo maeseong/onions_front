@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'ai_chat_screen.dart';
 
 class AiScreen extends StatelessWidget {
   const AiScreen({super.key});
@@ -42,7 +43,7 @@ class AiScreen extends StatelessWidget {
                 children: [
                   const Text('나의 현재 스펙', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-                  
+
                   // 스펙 그리드
                   Row(
                     children: [
@@ -69,7 +70,11 @@ class AiScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () { print('미완성'); },
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AiChatScreen()),
+                  );
+                },
                 style: ElevatedButton.styleFrom(elevation: 0),
                 child: const Text('AI와 스펙 진단하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
@@ -103,8 +108,8 @@ class AiScreen extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold, 
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
               color: isWarning ? Colors.redAccent : Colors.black87,
             ),
           ),
