@@ -1,21 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../core/network/api_client.dart';
+
 import '../repositories/ai_repository.dart';
 
-class AiChatScreen extends StatefulWidget {
+class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
 
   @override
-  State<AiChatScreen> createState() => _AiChatScreenState();
+  ConsumerState<AiChatScreen> createState() => _AiChatScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _primaryColor = const Color(0xFF3CC8A1);
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
-  late final AiRepository _repo;
+
 
   // 채팅 메시지 목록
   final List<_ChatMessage> _messages = [];
@@ -40,7 +41,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   void initState() {
     super.initState();
-    _repo = AiRepository(ApiClient());
+
     _addBotMessage('반가워요! 입력하신 스펙을 바탕으로 진단을 시작할까요? 목표하시는 기업군이 있나요?');
   }
 
@@ -93,7 +94,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     Map<String, dynamic>? cardData;
 
     try {
-      await for (final event in _repo.analyzeSpec('현재 스펙을 분석해줘')) {
+      await for (final event in ref.read(aiRepositoryProvider).analyzeSpec('현재 스펙을 분석해줘')) {
         final type = event['type'] as String?;
         if (type == 'text') {
           botText += (event['content'] as String? ?? '');
@@ -126,7 +127,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final res = await _repo.getGapAnalysis();
+      final res = await ref.read(aiRepositoryProvider).getGapAnalysis();
       setState(() {
         _isLoading = false;
         _gapResult = res['data'] ?? res;
@@ -165,7 +166,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<void> _runSimulate() async {
     setState(() => _isLoading = true);
     try {
-      final res = await _repo.simulate(
+      final res = await ref.read(aiRepositoryProvider).simulate(
         companyId: 1,
         specChanges: {
           'gpa': _simGpa,
@@ -203,7 +204,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     String reply = '';
     try {
-      await for (final event in _repo.analyzeSpec(text)) {
+      await for (final event in ref.read(aiRepositoryProvider).analyzeSpec(text)) {
         if (event['type'] == 'text') reply += (event['content'] ?? '');
       }
     } catch (_) {

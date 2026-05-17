@@ -1,18 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import '../../../core/network/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_provider.dart';
+
+final aiRepositoryProvider = Provider<AiRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AiRepository(apiClient.dio);
+});
 
 class AiRepository {
-  final ApiClient _apiClient;
+  final Dio _dio;
 
-  AiRepository(this._apiClient);
+  AiRepository(this._dio);
 
-  /// SSE 스트리밍 분석 — analyzeSpec('카카오 합격 가능성 분석해줘', companyId: 1)
+  /// SSE 스트리밍 분석
   Stream<Map<String, dynamic>> analyzeSpec(String message, {int? companyId}) async* {
     final controller = StreamController<Map<String, dynamic>>();
 
-    _apiClient.dio
+    _dio
         .post(
       '/api/ai/analyze',
       data: {
@@ -61,7 +67,7 @@ class AiRepository {
 
   /// 갭 분석 조회
   Future<Map<String, dynamic>> getGapAnalysis() async {
-    final response = await _apiClient.dio.get('/api/ai/gap-analysis');
+    final response = await _dio.get('/api/ai/gap-analysis');
     return response.data;
   }
 
@@ -70,7 +76,7 @@ class AiRepository {
     required int companyId,
     required Map<String, dynamic> specChanges,
   }) async {
-    final response = await _apiClient.dio.post(
+    final response = await _dio.post(
       '/api/ai/simulate',
       data: {'company_id': companyId, 'spec_changes': specChanges},
     );
@@ -79,13 +85,13 @@ class AiRepository {
 
   /// 합격확률 예측 (단일 기업)
   Future<Map<String, dynamic>> predictRate(int companyId) async {
-    final response = await _apiClient.dio.get('/api/ml/predict?company_id=$companyId');
+    final response = await _dio.get('/api/ml/predict?company_id=$companyId');
     return response.data;
   }
 
   /// 전체 목표기업 합격확률 예측
   Future<Map<String, dynamic>> predictBulk() async {
-    final response = await _apiClient.dio.get('/api/ml/predict/bulk');
+    final response = await _dio.get('/api/ml/predict/bulk');
     return response.data;
   }
 }
