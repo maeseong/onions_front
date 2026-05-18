@@ -25,7 +25,7 @@ class AuthRepository {
       // 기기에 가짜 토큰과 온보딩 완료 징표 삽입
       await _storage.write(key: AppConstants.accessTokenKey, value: 'fake_master_access_token');
       await _storage.write(key: AppConstants.refreshTokenKey, value: 'fake_master_refresh_token');
-      await _storage.write(key: 'isOnboarded', value: 'true'); // 온보딩 패스하고 홈으로 직행
+      await _storage.write(key: 'isOnboarded', value: 'false'); // 온보딩 패스하고 홈으로 직행
       
       return true; 
     }

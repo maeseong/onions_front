@@ -98,15 +98,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  // 수정된 _submitOnboarding 함수
   Future<void> _submitOnboarding() async {
     setState(() => _isLoading = true);
     try {
+      // [임시 처리] 서버가 죽어있으므로 진짜 API 호출은 잠시 주석 처리
+      /*
       final dio = ref.read(apiClientProvider).dio;
       await dio.post('/api/users/onboarding', data: {
         'name': _nameController.text.trim(),
         'grade': _selectedGrade,
         'jobName': _selectedJob,
-        // 'preferred_company_type': _selectedCompanyType, (API 명세서에 없어서 우선 주석 처리)
         'gpa': double.tryParse(_gpaController.text) ?? 0,
         'toeicScore': int.tryParse(_toeicController.text) ?? 0,
         'certificateCount': int.tryParse(_certController.text) ?? 0,
@@ -116,12 +118,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         'techStack': "",
         'targetCompanyIds': [],
       });
+      */
 
-      // 온보딩 서버 제출 성공 시 로컬에도 온보딩 완료 상태 기록
+      // 진짜 통신을 하는 것처럼 1초 동안 로딩 스피너를 돌림 (UI 테스트용)
+      await Future.delayed(const Duration(seconds: 1));
+
+      // 온보딩 서버 제출 "가짜" 성공 -> 기기에 온보딩 완료 상태 기록
       const storage = FlutterSecureStorage();
       await storage.write(key: 'isOnboarded', value: 'true');
 
+      // 홈 화면 이동
       if (mounted) context.go('/home');
+      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

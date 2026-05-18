@@ -17,15 +17,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
+  // _clearOldTokens() 자동 실행 로직을 제거
   @override
   void initState() {
     super.initState();
-    _clearOldTokens();
-  }
-
-  Future<void> _clearOldTokens() async {
-    await _storage.deleteAll();
-    debugPrint('로그인 화면: 기기에 저장된 옛날 토큰을 모두 지우기');
   }
 
   @override
@@ -114,7 +109,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     );
                     if (context.mounted) {
                       if (success) {
-                        context.go('/home');
+                        // 마스터 계정 로그인 시, isOnboarded 값이 어떻게 세팅되었는지에 따라 이동을 맡기기 위해
+                        // 강제로 /home으로 보내지 않고 스플래시나 조건문을 다시 태워도 되지만, 
+                        // 지금은 마스터 계정이 온보딩으로 가길 원하시니 우선 홈으로 가는 하드코딩을 수정할 수 있습니다.
+                        // (auth_repository에서 처리한 방향대로 흐르게 하려면 아래처럼 변경)
+                        final isOnboarded = await _storage.read(key: 'isOnboarded');
+                        if (isOnboarded == 'true') {
+                          context.go('/home');
+                        } else {
+                          context.go('/onboarding');
+                        }
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('로그인 실패: 이메일 또는 비밀번호를 확인해주세요.')),
@@ -167,14 +171,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         }
                       } catch (e) {
                         debugPrint('flutter: [카카오 에러 발생] : Exception: 네트워크 오류:');
-                        if (e is DioException) {
-                          debugPrint('1. 실패한 API 주소: ${e.requestOptions.uri}');
-                          debugPrint('2. 서버 상태 코드: ${e.response?.statusCode}');
-                          debugPrint('3. 서버가 보낸 메시지: ${e.response?.data}');
-                        } else {
-                          debugPrint('알 수 없는 에러: $e');
-                        }
-                        
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
@@ -209,14 +205,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         }
                       } catch (e) {
                         debugPrint('flutter: [구글 에러 발생] : Exception: 네트워크 오류:');
-                        if (e is DioException) {
-                          debugPrint('1. 실패한 API 주소: ${e.requestOptions.uri}');
-                          debugPrint('2. 서버 상태 코드: ${e.response?.statusCode}');
-                          debugPrint('3. 서버가 보낸 메시지: ${e.response?.data}');
-                        } else {
-                          debugPrint('알 수 없는 에러: $e');
-                        }
-                        
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
@@ -245,6 +233,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
+
+              // [추가됨] 개발자 전용 흐름 리셋 버튼
+              Center(
+                child: TextButton(
+                  onPressed: () async {
+                    await _storage.deleteAll();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('초기화 완료: master 계정으로 로그인하면 온보딩 화면부터 다시 진행'),
+                          backgroundColor: Colors.blueAccent,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text(
+                    '개발자 모드: 데이터 전체 리셋하기', 
+                    style: TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.underline),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
