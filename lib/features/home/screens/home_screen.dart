@@ -19,14 +19,19 @@ class HomeScreen extends ConsumerWidget {
   ];
 
   List<Widget> _buildTrees(int count) {
-    return List.generate(count.clamp(0, _allSlots.length), (i) {
-      return Positioned(
-        left: _allSlots[i].dx - 16,
-        top: _allSlots[i].dy - 24,
-        child: const Text('🌳', style: TextStyle(fontSize: 32)),
-      );
-    });
-  }
+  final treeImages = ['tree1.png', 'tree2.png', 'tree3.png', 'tree4.png'];
+  return List.generate(count.clamp(0, _allSlots.length), (i) {
+    return Positioned(
+      left: _allSlots[i].dx - 20,
+      top: _allSlots[i].dy - 20,
+      child: Image.asset(
+        'assets/images/${treeImages[i % treeImages.length]}',
+        width: 40,
+        height: 40,
+      ),
+    );
+  });
+}
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
