@@ -17,6 +17,8 @@ class CompanyScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
         elevation: 0,
+        titleSpacing: 20.0,
+        centerTitle: false,
         title: const Text('기업 추천', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),

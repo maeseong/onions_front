@@ -16,10 +16,12 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F9FA),
         elevation: 0,
+        titleSpacing: 20.0,
+        centerTitle: false,
         title: const Text('프로필', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
           // 로그아웃 버튼 추가

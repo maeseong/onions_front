@@ -23,6 +23,8 @@ class ScheduleScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
         elevation: 0,
+        titleSpacing: 20.0,
+        centerTitle: false,
         title: const Text(
           '일정',
           style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
