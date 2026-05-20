@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-
 import '../repositories/ai_repository.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -17,22 +16,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
 
-
-  // 채팅 메시지 목록
   final List<_ChatMessage> _messages = [];
-
-  // 현재 활성 탭 (0=스펙분석, 1=갭분석, 2=시뮬레이션)
   int _activeTab = 0;
-
-  // 로딩 상태
   bool _isLoading = false;
 
-  // 결과 데이터
-  Map<String, dynamic>? _analysisResult;   // 스펙 분석 결과
-  Map<String, dynamic>? _gapResult;        // 갭 분석 결과
-  Map<String, dynamic>? _simulateResult;   // 시뮬레이션 결과
+  Map<String, dynamic>? _analysisResult;   
+  Map<String, dynamic>? _gapResult;        
+  Map<String, dynamic>? _simulateResult;   
 
-  // 시뮬레이션용 슬라이더 값
   double _simGpa = 3.8;
   double _simToeic = 820;
   int _simInternship = 0;
@@ -41,7 +32,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   @override
   void initState() {
     super.initState();
-
     _addBotMessage('반가워요! 입력하신 스펙을 바탕으로 진단을 시작할까요? 목표하시는 기업군이 있나요?');
   }
 
@@ -74,21 +64,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     });
   }
 
-  // ── 탭 버튼 클릭 ──────────────────────────────────────────────────────────
-
   Future<void> _onTabTap(int tab) async {
     setState(() => _activeTab = tab);
-
     if (tab == 0) await _runSpecAnalysis();
     if (tab == 1) await _runGapAnalysis();
     if (tab == 2) await _showSimulation();
   }
 
-  // ── 스펙 분석 (SSE) ───────────────────────────────────────────────────────
-
+  // 1. 스펙 분석 
   Future<void> _runSpecAnalysis() async {
     _addUserMessage('스펙 분석');
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _analysisResult = null; // 기존 결과 초기화
+    });
 
     String botText = '';
     Map<String, dynamic>? cardData;
@@ -98,33 +87,30 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         final type = event['type'] as String?;
         if (type == 'text') {
           botText += (event['content'] as String? ?? '');
-          setState(() {});
-        } else if (type == 'result_card') {
+          setState(() {}); // 글자가 한 글자씩 쳐지는 효과
+        } else if (type == 'result_card' || type == 'resultCard') {
           cardData = event['data'] as Map<String, dynamic>?;
         }
       }
-    } catch (_) {
-      // 백엔드 미연결 시 더미 데이터
-      botText = '현재 스펙을 분석한 결과입니다.';
-      cardData = {
-        'radar': {'학점': 85, '어학': 82, '자격증': 70, '인턴': 0, '공모전': 40, '프로젝트': 75},
-        'strengths': ['학점이 우수합니다 (3.8/4.5)', '정보처리기사 자격증을 보유하고 있습니다', '프로젝트 경험이 양호합니다'],
-        'weaknesses': ['인턴 경험이 부족합니다 - 가장 시급히 보완이 필요합니다', '토익 점수를 850점 이상으로 올리는 것을 권장합니다', '공모전이나 해커톤 참여로 실전 경험을 쌓아보세요'],
-      };
+      setState(() {
+        _isLoading = false;
+        _analysisResult = cardData;
+      });
+      if (botText.isNotEmpty) _addBotMessage(botText);
+    } catch (e) {
+      // 에러 발생 시 명확하게 실패를 알림
+      setState(() => _isLoading = false);
+      _addBotMessage('스펙 분석 중 통신 오류가 발생했어요. 백엔드 서버 상태를 확인한 후 다시 시도해 주세요.\n(에러: $e)');
     }
-
-    setState(() {
-      _isLoading = false;
-      _analysisResult = cardData;
-    });
-    if (botText.isNotEmpty) _addBotMessage(botText);
   }
 
-  // ── 갭 분석 ───────────────────────────────────────────────────────────────
-
+  // 2. 갭 분석
   Future<void> _runGapAnalysis() async {
     _addUserMessage('갭 분석');
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _gapResult = null;
+    });
 
     try {
       final res = await ref.read(aiRepositoryProvider).getGapAnalysis();
@@ -133,30 +119,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         _gapResult = res['data'] ?? res;
       });
       _addBotMessage('목표 기업과의 갭 분석 결과입니다.');
-    } catch (_) {
-      // 더미
-      setState(() {
-        _isLoading = false;
-        _gapResult = {
-          'predictions': [
-            {'company_name': '카카오', 'predicted_rate': 47},
-            {'company_name': '네이버', 'predicted_rate': 61},
-          ],
-          'gap_items': [
-            {'label': '학점', 'mine': 0.84, 'avg': 0.90},
-            {'label': '어학', 'mine': 0.82, 'avg': 0.88},
-            {'label': '자격증', 'mine': 0.70, 'avg': 0.72},
-            {'label': '인턴', 'mine': 0.0, 'avg': 0.65},
-            {'label': '공모전', 'mine': 0.40, 'avg': 0.55},
-          ],
-        };
-      });
-      _addBotMessage('목표 기업과의 갭 분석 결과입니다.');
+    } catch (e) {
+      // 에러 발생 시 명확하게 실패를 알림
+      setState(() => _isLoading = false);
+      _addBotMessage('갭 분석 데이터를 불러오는데 실패했어요. 다시 시도해 주세요.\n(에러: $e)');
     }
   }
 
-  // ── 시뮬레이션 ────────────────────────────────────────────────────────────
-
+  // 3. 시뮬레이션
   Future<void> _showSimulation() async {
     _addUserMessage('시뮬레이션');
     setState(() { _simulateResult = null; });
@@ -164,7 +134,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _runSimulate() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _simulateResult = null;
+    });
     try {
       final res = await ref.read(aiRepositoryProvider).simulate(
         companyId: 1,
@@ -180,21 +153,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         _simulateResult = res['data'] ?? res;
       });
       _addBotMessage('시뮬레이션 결과입니다.');
-    } catch (_) {
-      setState(() {
-        _isLoading = false;
-        _simulateResult = {
-          'kakao': 95,
-          'naver': 95,
-          'message': '인턴 $_simInternship회 추가로 카카오 합격률이 상승했어요!',
-        };
-      });
-      _addBotMessage('시뮬레이션 결과입니다.');
+    } catch (e) {
+      // 에러 발생 시 명확하게 실패를 알림
+      setState(() => _isLoading = false);
+      _addBotMessage('시뮬레이션 실행에 실패했어요. 스펙 값을 확인하고 다시 시도해 주세요.\n(에러: $e)');
     }
   }
 
-  // ── 텍스트 전송 ───────────────────────────────────────────────────────────
-
+  // 4. 일반 텍스트 전송
   Future<void> _sendMessage() async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
@@ -207,17 +173,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       await for (final event in ref.read(aiRepositoryProvider).analyzeSpec(text)) {
         if (event['type'] == 'text') reply += (event['content'] ?? '');
       }
-    } catch (_) {
-      reply = '죄송해요, 잠시 후 다시 시도해주세요.';
+      setState(() => _isLoading = false);
+      _addBotMessage(reply.isEmpty ? '분석을 완료했습니다!' : reply);
+    } catch (e) {
+      // 에러 발생 시 명확하게 실패를 알림
+      setState(() => _isLoading = false);
+      _addBotMessage('메시지 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
     }
-
-    setState(() => _isLoading = false);
-    _addBotMessage(reply.isEmpty ? '네, 알겠습니다!' : reply);
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +203,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       ),
       body: Column(
         children: [
-          // ── 채팅 + 결과 카드 영역 ──
           Expanded(
             child: ListView(
               controller: _scrollController,
@@ -255,15 +217,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               ],
             ),
           ),
-
-          // ── 하단 탭 + 입력창 ──
           _buildBottomBar(),
         ],
       ),
     );
   }
-
-  // ── 채팅 버블 ─────────────────────────────────────────────────────────────
 
   Widget _buildChatBubble(_ChatMessage msg) {
     final isUser = msg.isUser;
@@ -312,8 +270,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ── 스펙 분석 카드 ────────────────────────────────────────────────────────
-
   Widget _buildSpecAnalysisCard() {
     final data = _analysisResult!;
     final radar = (data['radar'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -332,9 +288,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           const SizedBox(height: 12),
           if (radar.isNotEmpty) SizedBox(height: 220, child: _buildRadarChart(radar)),
           const SizedBox(height: 16),
-          _buildResultSection('강점', strengths, isStrength: true),
-          const SizedBox(height: 12),
-          _buildResultSection('보완이 필요한 점', weaknesses, isStrength: false),
+          if (strengths.isNotEmpty) _buildResultSection('강점', strengths, isStrength: true),
+          if (strengths.isNotEmpty && weaknesses.isNotEmpty) const SizedBox(height: 12),
+          if (weaknesses.isNotEmpty) _buildResultSection('보완이 필요한 점', weaknesses, isStrength: false),
         ],
       ),
     );
@@ -343,7 +299,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget _buildRadarChart(Map<String, dynamic> radar) {
     final labels = radar.keys.toList();
     final values = radar.values.map((v) => (v as num).toDouble()).toList();
-    final maxVal = 100.0;
 
     return RadarChart(
       RadarChartData(
@@ -399,12 +354,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ── 갭 분석 카드 ──────────────────────────────────────────────────────────
-
   Widget _buildGapCard() {
     final data = _gapResult!;
     final predictions = (data['predictions'] as List?)?.cast<Map>() ?? [];
-    final gapItems = (data['gap_items'] as List?)?.cast<Map>() ?? [];
+    final gapItems = (data['gapItems'] ?? data['gap_items'] as List?)?.cast<Map>() ?? [];
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -416,21 +369,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         children: [
           const Text('합격 예측 분석', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
-          // 합격률 카드들
-          Row(children: predictions.map((p) => Expanded(
+          if (predictions.isNotEmpty) Row(children: predictions.map((p) => Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(14)),
               child: Column(children: [
-                Text(p['company_name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text((p['companyName'] ?? p['company_name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('${p['predicted_rate']}%',
+                Text('${p['predictedRate'] ?? p['predicted_rate'] ?? 0}%',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _primaryColor)),
               ]),
             ),
           )).toList()),
-          const SizedBox(height: 16),
+          if (predictions.isNotEmpty) const SizedBox(height: 16),
           const Row(children: [
             Icon(Icons.bolt, color: Colors.orange, size: 18),
             SizedBox(width: 4),
@@ -438,12 +390,12 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           ]),
           const SizedBox(height: 12),
           ...gapItems.map((item) => _buildGapBar(
-            label: item['label']?.toString() ?? '',
+            label: (item['label'] ?? '').toString(),
             mine: (item['mine'] as num?)?.toDouble() ?? 0,
             avg: (item['avg'] as num?)?.toDouble() ?? 0,
           )),
           const SizedBox(height: 8),
-          Row(children: [
+          if (gapItems.isNotEmpty) Row(children: [
             _legendDot(Colors.grey[400]!, '내 스펙'),
             const SizedBox(width: 12),
             _legendDot(_primaryColor, '합격자 평균'),
@@ -460,7 +412,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
         const SizedBox(height: 4),
         Stack(children: [
-          // 합격자 평균
           ClipRRect(borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: avg, minHeight: 10,
@@ -468,7 +419,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
             ),
           ),
-          // 내 스펙
           ClipRRect(borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: mine, minHeight: 10,
@@ -488,8 +438,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
     ]);
   }
-
-  // ── 시뮬레이션 카드 ───────────────────────────────────────────────────────
 
   Widget _buildSimulationCard() {
     return Container(
@@ -610,8 +558,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ── 하단 탭 + 입력창 ──────────────────────────────────────────────────────
-
   Widget _buildBottomBar() {
     final tabs = ['스펙 분석', '갭 분석', '시뮬레이션'];
     return Container(
@@ -668,15 +614,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   static const _smallGrey = TextStyle(fontSize: 11, color: Colors.black38);
 }
 
-// ── 데이터 모델 ───────────────────────────────────────────────────────────────
-
 class _ChatMessage {
   final String text;
   final bool isUser;
   _ChatMessage({required this.text, required this.isUser});
 }
-
-// ── 점 로딩 애니메이션 ────────────────────────────────────────────────────────
 
 class _DotsIndicator extends StatefulWidget {
   const _DotsIndicator();
