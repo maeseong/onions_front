@@ -98,18 +98,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  // 수정된 _submitOnboarding 함수
   Future<void> _submitOnboarding() async {
     setState(() => _isLoading = true);
     try {
-      // [임시 처리] 서버가 죽어있으므로 진짜 API 호출은 잠시 주석 처리
-      /*
       final dio = ref.read(apiClientProvider).dio;
+      
+      // 백엔드 domain/user 명세서(UserDto) 규격에 맞춰 정확하게 매칭하여 전송
       await dio.post('/api/users/onboarding', data: {
         'name': _nameController.text.trim(),
         'grade': _selectedGrade,
         'jobName': _selectedJob,
-        'gpa': double.tryParse(_gpaController.text) ?? 0,
+        // 백엔드 UserDto 명세서에 preferredCompanyType 등의 필드가 명시되어 있다면 확인 후 아래처럼 추가
+        // 'preferredCompanyType': _selectedCompanyType, 
+        'gpa': double.tryParse(_gpaController.text) ?? 0.0,
         'toeicScore': int.tryParse(_toeicController.text) ?? 0,
         'certificateCount': int.tryParse(_certController.text) ?? 0,
         'projectCount': int.tryParse(_projectController.text) ?? 0,
@@ -118,22 +119,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         'techStack': "",
         'targetCompanyIds': [],
       });
-      */
 
-      // 진짜 통신을 하는 것처럼 1초 동안 로딩 스피너를 돌림 (UI 테스트용)
-      await Future.delayed(const Duration(seconds: 1));
-
-      // 온보딩 서버 제출 "가짜" 성공 -> 기기에 온보딩 완료 상태 기록
+      // 서버 제출이 성공했을 때만 로컬 저장소에 온보딩 완료 상태를 저장
       const storage = FlutterSecureStorage();
       await storage.write(key: 'isOnboarded', value: 'true');
 
-      // 홈 화면 이동
       if (mounted) context.go('/home');
-      
     } catch (e) {
+      debugPrint('[온보딩 저장 실패 에러 로그] : $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
+          SnackBar(content: Text('저장에 실패했어요. 에러: $e')),
         );
       }
     } finally {

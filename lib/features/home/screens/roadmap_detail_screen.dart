@@ -8,7 +8,7 @@ class RoadmapDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    final isCompleted = stage['is_completed'] ?? false;
+    final isCompleted = stage['isCompleted'] ?? stage['is_completed'] ?? false;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -20,7 +20,7 @@ class RoadmapDetailScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          stage['stage_name'] ?? '',
+          stage['stageName'] ?? stage['stage_name'] ?? '',
           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
@@ -29,7 +29,6 @@ class RoadmapDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 완료 여부 뱃지
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -57,21 +56,18 @@ class RoadmapDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 단계 이름
             Text(
-              stage['stage_name'] ?? '',
+              stage['stageName'] ?? stage['stage_name'] ?? '',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
-            // 설명
             Text(
               stage['description'] ?? '',
               style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.6),
             ),
             const SizedBox(height: 32),
 
-            // 단계 정보 카드
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -85,22 +81,22 @@ class RoadmapDetailScreen extends StatelessWidget {
                 children: [
                   const Text('단계 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-                  _buildInfoRow('단계', '${stage['stage_order'] ?? '-'}단계'),
+                  _buildInfoRow('단계', '${stage['stageOrder'] ?? stage['stage_order'] ?? '-'}단계'),
                   _buildInfoRow('상태', isCompleted ? '✅ 완료' : '🔄 진행중'),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // 완료 버튼
             if (!isCompleted)
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
+                    // 향후 개별 단계 완료 API 연결 시 사용 가능
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('백엔드 연동 후 사용 가능해요!')),
+                      const SnackBar(content: Text('퀘스트를 먼저 완료해 주세요!')),
                     );
                   },
                   style: ElevatedButton.styleFrom(

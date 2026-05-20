@@ -20,13 +20,13 @@ class CareerGrowthModel {
   // 백엔드 JSON 데이터를 플러터 객체로 변환
   factory CareerGrowthModel.fromJson(Map<String, dynamic> json) {
     return CareerGrowthModel(
-      growthRate: json['growthRate'] ?? 0,
+      growthRate: json['growthRate'] ?? json['growth_rate'] ?? 0,
       level: json['level'] ?? 1,
-      totalExp: json['totalExp'] ?? 0,
-      nextLevelExp: json['nextLevelExp'] ?? 1000,
-      streakDays: json['streakDays'] ?? 0,
-      completedQuests: json['completedQuests'] ?? 0,
-      totalQuests: json['totalQuests'] ?? 20,
+      totalExp: json['totalExp'] ?? json['total_exp'] ?? 0,
+      nextLevelExp: json['nextLevelExp'] ?? json['next_level_exp'] ?? 1000,
+      streakDays: json['streakDays'] ?? json['streak_days'] ?? 0,
+      completedQuests: json['completedQuests'] ?? json['completed_quests'] ?? 0,
+      totalQuests: json['totalQuests'] ?? json['total_quests'] ?? 20,
     );
   }
 }

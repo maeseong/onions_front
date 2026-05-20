@@ -18,18 +18,6 @@ class AuthRepository {
 
   // 이메일 로그인 API 호출
   Future<bool> loginWithEmail(String email, String password) async {
-    // [프론트엔드 테스트 전용] 이메일에 'master', 비밀번호에 '1234'를 입력하면 백엔드 없이 바로 통과
-    if (email == 'master' && password == '1234') {
-      debugPrint('[테스트 모드] 마스터 계정으로 로그인 (백엔드 통신 생략)');
-      
-      // 기기에 가짜 토큰과 온보딩 완료 징표 삽입
-      await _storage.write(key: AppConstants.accessTokenKey, value: 'fake_master_access_token');
-      await _storage.write(key: AppConstants.refreshTokenKey, value: 'fake_master_refresh_token');
-      await _storage.write(key: 'isOnboarded', value: 'false'); // 온보딩 패스하고 홈으로 직행
-      
-      return true; 
-    }
-
     try {
       final response = await _dio.post('/api/auth/login', data: {
         'email': email,
@@ -42,7 +30,7 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        // 이메일 로그인은 이미 가입된 회원이므로 온보딩 완료 상태(true)로 로컬에 저장
+        // 이메일 로그인은 이미 가입된 회원이므로 온보딩 완료 상태로 로컬에 저장
         await _storage.write(key: 'isOnboarded', value: 'true');
 
         return true;
@@ -64,13 +52,9 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        // 'isNewUser'와 'newUser' 둘 다 체크
         final bool isNewUser = data['isNewUser'] ?? data['newUser'] ?? false;
-        
-        // 'isOnboarded'와 'onboarded' 둘 다 체크
         final bool isOnboarded = data['user']?['isOnboarded'] ?? data['user']?['onboarded'] ?? false;
 
-        // 앱 재진입 시 기억할 수 있도록 로컬 저장소에 온보딩 완료 여부 저장
         await _storage.write(key: 'isOnboarded', value: isOnboarded.toString());
 
         return {
@@ -95,13 +79,9 @@ class AuthRepository {
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
 
-        // 'isNewUser'와 'newUser' 둘 다 체크
         final bool isNewUser = data['isNewUser'] ?? data['newUser'] ?? false;
-        
-        // 'isOnboarded'와 'onboarded' 둘 다 체크
         final bool isOnboarded = data['user']?['isOnboarded'] ?? data['user']?['onboarded'] ?? false;
 
-        // 앱 재진입 시 기억할 수 있도록 로컬 저장소에 온보딩 완료 여부 저장
         await _storage.write(key: 'isOnboarded', value: isOnboarded.toString());
 
         return {

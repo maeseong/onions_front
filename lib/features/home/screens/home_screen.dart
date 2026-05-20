@@ -50,7 +50,6 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 내 성장 필드
               growthAsync.when(
                 loading: () => const SizedBox(height: 220, child: Center(child: CircularProgressIndicator())),
                 error: (e, _) => Container(
@@ -93,7 +92,6 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 16),
 
-                        // 땅 + 나무
                         SizedBox(
                           width: double.infinity,
                           height: 220,
@@ -119,7 +117,6 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 20),
 
-                        // 경험치 바
                         LinearProgressIndicator(
                           value: growthData.nextLevelExp > 0 ? growthData.totalExp / growthData.nextLevelExp : 0,
                           backgroundColor: Colors.grey[200],
@@ -151,7 +148,6 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
 
-              // 2. 로드맵 펼치기 버튼
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -172,7 +168,6 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // 로드맵 내용
               if (isExpanded) ...[
                 const SizedBox(height: 16),
                 roadmapAsync.when(
@@ -186,7 +181,7 @@ class HomeScreen extends ConsumerWidget {
                   data: (roadmap) {
                     final stages = roadmap['stages'] as List? ?? [];
                     final title = roadmap['title'] ?? '아직 로드맵이 없어요';
-                    final progressRate = roadmap['progress_rate'] ?? 0;
+                    final progressRate = roadmap['progressRate'] ?? roadmap['progress_rate'] ?? 0;
 
                     return Container(
                       padding: const EdgeInsets.all(20),
@@ -198,7 +193,6 @@ class HomeScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 로드맵 제목 + 진행률
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -212,10 +206,9 @@ class HomeScreen extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          LinearProgressIndicator(value: progressRate / 100, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 8, borderRadius: BorderRadius.circular(4)),
+                          LinearProgressIndicator(value: (progressRate as num) / 100, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 8, borderRadius: BorderRadius.circular(4)),
                           const SizedBox(height: 20),
 
-                          // 💡 스테이지가 비어있을 때 빈 화면 안내 문구 추가
                           if (stages.isEmpty)
                             const Center(
                               child: Padding(
@@ -224,11 +217,10 @@ class HomeScreen extends ConsumerWidget {
                               ),
                             ),
 
-                          // 단계 리스트
                           ...stages.asMap().entries.map((entry) {
                             final index = entry.key;
                             final stage = entry.value;
-                            final isCompleted = stage['is_completed'] ?? false;
+                            final isCompleted = stage['isCompleted'] ?? stage['is_completed'] ?? false;
                             final isLast = index == stages.length - 1;
 
                             return GestureDetector(
@@ -263,7 +255,7 @@ class HomeScreen extends ConsumerWidget {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(stage['stage_name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, color: isCompleted ? primaryColor : Colors.black87)),
+                                                  Text(stage['stageName'] ?? stage['stage_name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, color: isCompleted ? primaryColor : Colors.black87)),
                                                   const SizedBox(height: 4),
                                                   Text(stage['description'] ?? '', style: const TextStyle(color: Colors.black54, fontSize: 13)),
                                                 ],
@@ -287,7 +279,6 @@ class HomeScreen extends ConsumerWidget {
               ],
               const SizedBox(height: 24),
 
-              // 3. 퀘스트 탭 및 리스트
               Row(
                 children: [
                   Expanded(
@@ -340,12 +331,12 @@ class HomeScreen extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _buildQuestCard(
-                          questId: quest['quest_id'] ?? 0,
-                          title: quest['quest_name'] ?? '',
+                          questId: quest['questId'] ?? quest['quest_id'] ?? 0,
+                          title: quest['questName'] ?? quest['quest_name'] ?? quest['title'] ?? '',
                           subtitle: quest['description'] ?? '',
                           tag: quest['category'] ?? '',
                           status: quest['status'] ?? 'not_started',
-                          expReward: quest['exp_reward'] ?? 0,
+                          expReward: quest['expReward'] ?? quest['exp_reward'] ?? 0,
                           context: context,
                           ref: ref,
                         ),
@@ -377,10 +368,12 @@ class HomeScreen extends ConsumerWidget {
     Color statusColor;
     switch (status) {
       case 'completed':
+      case 'COMPLETED':
         statusText = '완료';
         statusColor = Colors.green;
         break;
       case 'in_progress':
+      case 'IN_PROGRESS':
         statusText = '진행중';
         statusColor = primaryColor;
         break;
@@ -388,6 +381,9 @@ class HomeScreen extends ConsumerWidget {
         statusText = '시작 전';
         statusColor = Colors.grey;
     }
+
+    // 이미 완료된 상태라면 완료 버튼 비활성화 시각화
+    final bool canComplete = (status == 'in_progress' || status == 'IN_PROGRESS');
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -419,7 +415,7 @@ class HomeScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                      child: Text(tag, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                      child: Text(tag.isNotEmpty ? tag : '기본', style: const TextStyle(fontSize: 12, color: Colors.black87)),
                     ),
                     const SizedBox(width: 8),
                     Row(
@@ -432,7 +428,7 @@ class HomeScreen extends ConsumerWidget {
                     const Spacer(),
                     
                     InkWell(
-                      onTap: status == 'in_progress' ? () async {
+                      onTap: canComplete ? () async {
                         try {
                           await ref.read(questActionProvider).completeQuest(questId);
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('퀘스트 완료! +$expReward XP 🌲')));
@@ -444,12 +440,12 @@ class HomeScreen extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: status == 'in_progress' ? primaryColor : statusColor.withOpacity(0.1),
+                          color: canComplete ? primaryColor : statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12)
                         ),
                         child: Text(
-                          status == 'in_progress' ? '완료하기' : statusText, 
-                          style: TextStyle(fontSize: 12, color: status == 'in_progress' ? Colors.white : statusColor, fontWeight: FontWeight.bold)
+                          canComplete ? '완료하기' : statusText, 
+                          style: TextStyle(fontSize: 12, color: canComplete ? Colors.white : statusColor, fontWeight: FontWeight.bold)
                         ),
                       ),
                     ),

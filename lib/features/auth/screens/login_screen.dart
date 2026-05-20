@@ -17,7 +17,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  // _clearOldTokens() 자동 실행 로직을 제거
   @override
   void initState() {
     super.initState();
@@ -109,10 +108,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     );
                     if (context.mounted) {
                       if (success) {
-                        // 마스터 계정 로그인 시, isOnboarded 값이 어떻게 세팅되었는지에 따라 이동을 맡기기 위해
-                        // 강제로 /home으로 보내지 않고 스플래시나 조건문을 다시 태워도 되지만, 
-                        // 지금은 마스터 계정이 온보딩으로 가길 원하시니 우선 홈으로 가는 하드코딩을 수정할 수 있습니다.
-                        // (auth_repository에서 처리한 방향대로 흐르게 하려면 아래처럼 변경)
                         final isOnboarded = await _storage.read(key: 'isOnboarded');
                         if (isOnboarded == 'true') {
                           context.go('/home');
