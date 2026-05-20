@@ -24,7 +24,6 @@ class CompanyScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // 필터 탭
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: SingleChildScrollView(
@@ -59,17 +58,16 @@ class CompanyScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // 기업 목록
           Expanded(
             child: companiesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => const Center(child: Text('기업 목록을 불러오지 못했어요')),
+              error: (e, _) => const Center(child: Text('기업 목록을 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
               data: (data) {
                 final companies = data['companies'] as List? ?? [];
                 final total = data['total'] ?? 0;
 
                 if (companies.isEmpty) {
-                  return const Center(child: Text('추천 기업이 없어요'));
+                  return const Center(child: Text('조건에 맞는 추천 기업이 없어요 🏢', style: TextStyle(color: Colors.black54)));
                 }
 
                 return ListView.builder(
@@ -98,17 +96,18 @@ class CompanyScreen extends ConsumerWidget {
   }
 
   Widget _buildCompanyCard(BuildContext context, Map<String, dynamic> company, Color primaryColor) {
-    final matchRate = company['match_rate'] ?? 0;
-    final reasons = company['recommendation_reasons'] as List? ?? [];
-    final isScrapped = company['is_scrapped'] ?? false;
+    final matchRate = company['matchRate'] ?? company['match_rate'] ?? 0;
+    final reasons = company['recommendationReasons'] ?? company['recommendation_reasons'] as List? ?? [];
+    final cName = company['companyName'] ?? company['company_name'] ?? '';
+    final cType = company['companyType'] ?? company['company_type'] ?? '';
 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CompanyDetailScreen(
-            companyId: company['company_id'],
-            companyName: company['company_name'] ?? '',
+            companyId: company['companyId'] ?? company['company_id'],
+            companyName: cName,
           ),
         ),
       ),
@@ -119,25 +118,19 @@ class CompanyScreen extends ConsumerWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                // 기업 아이콘
                 Container(
                   width: 48, height: 48,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                   child: Center(
                     child: Text(
-                      (company['company_name'] ?? '?').substring(0, 1),
+                      cName.isNotEmpty ? cName.substring(0, 1) : '?',
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
                     ),
                   ),
@@ -147,47 +140,30 @@ class CompanyScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(company['company_name'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text(
-                        '${company['company_type'] ?? ''} · ${company['industry'] ?? ''}',
-                        style: const TextStyle(color: Colors.black54, fontSize: 13),
-                      ),
+                      Text(cName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('$cType · ${company['industry'] ?? ''}', style: const TextStyle(color: Colors.black54, fontSize: 13)),
                     ],
                   ),
                 ),
-                // 매칭률
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$matchRate%',
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                  ),
+                  decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                  child: Text('$matchRate%', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 추천 이유
             if (reasons.isNotEmpty)
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 8, runSpacing: 8,
                 children: reasons.map((reason) {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
                     child: Text(reason.toString(), style: const TextStyle(fontSize: 12, color: Colors.black54)),
                   );
                 }).toList(),
               ),
-
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -196,16 +172,10 @@ class CompanyScreen extends ConsumerWidget {
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.black54),
                     const SizedBox(width: 4),
-                    Text(
-                      company['hiring_season'] ?? '-',
-                      style: const TextStyle(color: Colors.black54, fontSize: 13),
-                    ),
+                    Text(company['hiringSeason'] ?? company['hiring_season'] ?? '-', style: const TextStyle(color: Colors.black54, fontSize: 13)),
                   ],
                 ),
-                Text(
-                  '상세보기 >',
-                  style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.bold),
-                ),
+                Text('상세보기 >', style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
           ],
