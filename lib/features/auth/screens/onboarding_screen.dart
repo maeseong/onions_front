@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
+import '../../../core/constants/app_constants.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,7 +18,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentPage = 0;
   bool _isLoading = false;
 
-  // 입력 데이터
   final TextEditingController _nameController = TextEditingController();
   int? _selectedGrade;
   String? _selectedJob;
@@ -32,7 +32,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    // 입력 상태를 실시간으로 감지하여 버튼 활성화 상태를 업데이트
     _nameController.addListener(_updateState);
     _gpaController.addListener(_updateState);
     _toeicController.addListener(_updateState);
@@ -59,7 +58,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  // 각 페이지별 모든 항목이 입력/선택되었는지 검사하는 Getter
   bool get _isNextButtonEnabled {
     if (_currentPage == 0) {
       return _nameController.text.trim().isNotEmpty && _selectedGrade != null;
@@ -73,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _internController.text.trim().isNotEmpty &&
           _awardController.text.trim().isNotEmpty;
     }
-    return true; // 마지막 요약 페이지는 항상 활성화
+    return true; 
   }
 
   void _nextPage() {
@@ -102,35 +100,40 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _isLoading = true);
     try {
       final dio = ref.read(apiClientProvider).dio;
-      
-      // 백엔드 domain/user 명세서(UserDto) 규격에 맞춰 정확하게 매칭하여 전송
-      await dio.post('/api/users/onboarding', data: {
-        'name': _nameController.text.trim(),
-        'grade': _selectedGrade,
-        'jobName': _selectedJob,
-        // 백엔드 UserDto 명세서에 preferredCompanyType 등의 필드가 명시되어 있다면 확인 후 아래처럼 추가
-        // 'preferredCompanyType': _selectedCompanyType, 
-        'gpa': double.tryParse(_gpaController.text) ?? 0.0,
-        'toeicScore': int.tryParse(_toeicController.text) ?? 0,
-        'certificateCount': int.tryParse(_certController.text) ?? 0,
-        'projectCount': int.tryParse(_projectController.text) ?? 0,
-        'internshipCount': int.tryParse(_internController.text) ?? 0,
-        'awardCount': int.tryParse(_awardController.text) ?? 0,
-        'techStack': "",
-        'targetCompanyIds': [],
-      });
-
-      // 서버 제출이 성공했을 때만 로컬 저장소에 온보딩 완료 상태를 저장
       const storage = FlutterSecureStorage();
-      await storage.write(key: 'isOnboarded', value: 'true');
+      
+      // 로그인 시 발급받은 토큰을 꺼내서 서버로 전송할 준비
+      final token = await storage.read(key: AppConstants.accessTokenKey);
+      
+      await dio.post(
+        '/api/users/onboarding', 
+        data: {
+          'name': _nameController.text.trim(),
+          'grade': _selectedGrade,
+          'jobName': _selectedJob,
+          'preferredCompanyType': _selectedCompanyType, 
+          'gpa': double.tryParse(_gpaController.text) ?? 0.0,
+          'toeicScore': int.tryParse(_toeicController.text) ?? 0,
+          'certificateCount': int.tryParse(_certController.text) ?? 0,
+          'projectCount': int.tryParse(_projectController.text) ?? 0,
+          'internshipCount': int.tryParse(_internController.text) ?? 0,
+          'awardCount': int.tryParse(_awardController.text) ?? 0,
+          'techStack': "",
+          'targetCompanyIds': [],
+        },
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
+      await storage.write(key: 'isOnboarded', value: 'true');
       if (mounted) context.go('/home');
     } catch (e) {
       debugPrint('[온보딩 저장 실패 에러 로그] : $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장에 실패했어요. 에러: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장에 실패했어요. 에러: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -146,20 +149,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 상단 진행바
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 뒤로가기
                   if (_currentPage > 0)
                     GestureDetector(
                       onTap: _prevPage,
                       child: const Icon(Icons.arrow_back_ios, size: 20),
                     ),
                   const SizedBox(height: 16),
-                  // 진행바
                   Row(
                     children: List.generate(4, (i) {
                       return Expanded(
@@ -175,15 +175,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     }),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${_currentPage + 1} / 4',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                  ),
+                  Text('${_currentPage + 1} / 4', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
                 ],
               ),
             ),
-
-            // 페이지 내용
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -196,15 +191,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ],
               ),
             ),
-
-            // 다음 버튼
             Padding(
               padding: const EdgeInsets.all(24),
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  // 조건 미충족 시 onPressed에 null을 전달하여 버튼을 완전히 비활성화
                   onPressed: (_isLoading || !_isNextButtonEnabled) ? null : _nextPage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
@@ -231,7 +223,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // 1단계: 이름, 학년
   Widget _buildPage1(Color primaryColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -244,8 +235,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 8),
           const Text('이름과 학년을 알려주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-
-          // 이름
           const Text('이름', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
           TextField(
@@ -253,14 +242,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             decoration: InputDecoration(
               hintText: '이름을 입력하세요',
               hintStyle: TextStyle(color: Colors.grey[400]),
-              filled: true,
-              fillColor: Colors.grey[50],
+              filled: true, fillColor: Colors.grey[50],
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             ),
           ),
           const SizedBox(height: 28),
-
-          // 학년
           const Text('학년', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 12),
           Row(
@@ -280,10 +266,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     child: Center(
                       child: Text(
                         '$grade학년',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -296,7 +279,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // 2단계: 희망 직무, 선호 기업 유형
   Widget _buildPage2(Color primaryColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -309,13 +291,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 8),
           const Text('희망 직무와 선호 기업 유형을 선택해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-
-          // 희망 직무
           const Text('희망 직무', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 10, runSpacing: 10,
             children: ['개발', '기획', '마케팅', '디자인', '데이터', '영업'].map((job) {
               final isSelected = _selectedJob == job;
               return GestureDetector(
@@ -327,20 +306,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: isSelected ? primaryColor : Colors.grey[200]!),
                   ),
-                  child: Text(
-                    job,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: Text(job, style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold)),
                 ),
               );
             }).toList(),
           ),
           const SizedBox(height: 32),
-
-          // 선호 기업 유형
           const Text('선호 기업 유형', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 12),
           Column(
@@ -384,7 +355,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // 3단계: 스펙 입력
   Widget _buildPage3(Color primaryColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -397,7 +367,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 8),
           const Text('없거나 모르면 0으로 입력해도 괜찮아요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-
           _buildSpecInput('학점 (GPA)', '예: 3.8', _gpaController, '/ 4.5'),
           _buildSpecInput('토익 (TOEIC)', '예: 820', _toeicController, '점'),
           _buildSpecInput('자격증', '취득한 자격증 수', _certController, '개'),
@@ -424,8 +393,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               hintText: hint,
               hintStyle: TextStyle(color: Colors.grey[400]),
               suffixText: suffix,
-              filled: true,
-              fillColor: Colors.grey[50],
+              filled: true, fillColor: Colors.grey[50],
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             ),
           ),
@@ -434,7 +402,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // 4단계: 완료
   Widget _buildPage4(Color primaryColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -447,8 +414,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 8),
           const Text('입력하신 정보를 확인해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-
-          // 입력 정보 요약 카드
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(

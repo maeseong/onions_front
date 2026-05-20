@@ -16,7 +16,6 @@ class AuthRepository {
 
   AuthRepository(this._dio, this._storage);
 
-  // 이메일 로그인 API 호출
   Future<bool> loginWithEmail(String email, String password) async {
     try {
       final response = await _dio.post('/api/auth/login', data: {
@@ -29,8 +28,6 @@ class AuthRepository {
         
         await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
         await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
-
-        // 이메일 로그인은 이미 가입된 회원이므로 온보딩 완료 상태로 로컬에 저장
         await _storage.write(key: 'isOnboarded', value: 'true');
 
         return true;
@@ -41,7 +38,6 @@ class AuthRepository {
     }
   }
 
-  // 카카오 로그인 API 호출
   Future<Map<String, bool>> loginWithKakao(String kakaoToken) async {
     try {
       final response = await _dio.post('/api/auth/kakao', data: {'kakaoToken': kakaoToken});
@@ -68,7 +64,6 @@ class AuthRepository {
     }
   }
 
-  // 구글 로그인 API 호출
   Future<Map<String, bool>> loginWithGoogle(String googleToken) async {
     try {
       final response = await _dio.post('/api/auth/google', data: {'googleToken': googleToken});
@@ -95,12 +90,17 @@ class AuthRepository {
     }
   }
   
-  // 로그아웃
+  // 로그아웃 시에도 누가 로그아웃 하는지 토큰을 실어 보냄
   Future<void> logout() async {
     try {
-      await _dio.post('/api/auth/logout');
+      final token = await _storage.read(key: AppConstants.accessTokenKey);
+      await _dio.post(
+        '/api/auth/logout',
+        options: Options(headers: {if (token != null) 'Authorization': 'Bearer $token'}),
+      );
     } catch (e) {
-      // 에러 무시
+      // 로그아웃 실패(서버 에러 등) 시에도 기기의 데이터는 삭제
+      debugPrint('서버 로그아웃 통신 에러: $e');
     } finally {
       await _storage.deleteAll(); 
     }

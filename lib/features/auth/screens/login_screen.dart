@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio/dio.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,11 +15,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -97,9 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : () async {
                     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('이메일과 비밀번호를 모두 입력해주세요.')),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이메일과 비밀번호를 모두 입력해주세요.')));
                       return;
                     }
                     final success = await ref.read(authControllerProvider.notifier).loginWithEmail(
@@ -115,15 +107,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           context.go('/onboarding');
                         }
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('로그인 실패: 이메일 또는 비밀번호를 확인해주세요.')),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 실패: 이메일 또는 비밀번호를 확인해주세요.')));
                       }
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
                   child: isLoading 
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('로그인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text('로그인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 32),
@@ -143,67 +138,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 카카오 로그인 버튼
+                  // 카카오 로그인
                   InkWell(
                     borderRadius: BorderRadius.circular(28),
                     onTap: isLoading ? null : () async {
                       try {
                         final loginResult = await ref.read(authControllerProvider.notifier).loginWithKakao();
-                        
                         if (context.mounted && loginResult != null) {
                           final isNewUser = loginResult['isNewUser'] ?? false;
                           final isOnboarded = loginResult['isOnboarded'] ?? false;
 
                           if (isNewUser || !isOnboarded) {
-                            debugPrint('카카오 온보딩 미완료 유저 -> 온보딩 화면으로 이동');
                             context.go('/onboarding');
                           } else {
-                            debugPrint('카카오 온보딩 완료 유저 -> 홈 화면으로 이동');
                             context.go('/home');
                           }
                         } else if (context.mounted && loginResult == null) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('카카오 로그인 결과가 null입니다.')));
                         }
                       } catch (e) {
-                        debugPrint('flutter: [카카오 에러 발생] : Exception: 네트워크 오류:');
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
-                          );
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')));
                         }
                       }
                     },
-                    child: _buildClippedImageSocialButton(
-                      imagePath: 'assets/images/kakao_logo.jpg',
-                    ),
+                    child: _buildClippedImageSocialButton(imagePath: 'assets/images/kakao_logo.jpg'),
                   ),
                   const SizedBox(width: 24), 
                   
-                  // 구글 로그인 버튼
+                  // 구글 로그인
                   InkWell(
                     borderRadius: BorderRadius.circular(28),
                     onTap: isLoading ? null : () async {
                       try {
                         final loginResult = await ref.read(authControllerProvider.notifier).loginWithGoogle();
-                        
                         if (context.mounted && loginResult != null) {
                           final isNewUser = loginResult['isNewUser'] ?? false;
                           final isOnboarded = loginResult['isOnboarded'] ?? false;
 
                           if (isNewUser || !isOnboarded) {
-                            debugPrint('구글 온보딩 미완료 유저 -> 온보딩 화면으로 이동');
                             context.go('/onboarding');
                           } else {
-                            debugPrint('구글 온보딩 완료 유저 -> 홈 화면으로 이동');
                             context.go('/home');
                           }
                         }
                       } catch (e) {
-                        debugPrint('flutter: [구글 에러 발생] : Exception: 네트워크 오류:');
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')),
-                          );
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다. 콘솔 메시지를 확인하세요.')));
                         }
                       }
                     },
@@ -227,28 +208,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Text('회원가입', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                   ),
                 ],
-              ),
-              const SizedBox(height: 20),
-
-              // [추가됨] 개발자 전용 흐름 리셋 버튼
-              Center(
-                child: TextButton(
-                  onPressed: () async {
-                    await _storage.deleteAll();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('초기화 완료: master 계정으로 로그인하면 온보딩 화면부터 다시 진행'),
-                          backgroundColor: Colors.blueAccent,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text(
-                    '개발자 모드: 데이터 전체 리셋하기', 
-                    style: TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.underline),
-                  ),
-                ),
               ),
               const SizedBox(height: 20),
             ],
