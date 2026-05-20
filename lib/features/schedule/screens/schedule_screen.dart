@@ -16,7 +16,6 @@ class ScheduleScreen extends ConsumerWidget {
     final yearMonth = '${focusedDay.year}-${focusedDay.month}';
     
     final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
-    // 다가오는 일정 파이프라인
     final upcomingAsync = ref.watch(upcomingScheduleProvider);
 
     return Scaffold(
@@ -29,19 +28,13 @@ class ScheduleScreen extends ConsumerWidget {
           style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black87),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black87),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black87), onPressed: () {}),
         ],
       ),
       body: scheduleAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => const Center(child: Text('일정을 불러오지 못했어요')),
+        error: (e, _) => const Center(child: Text('일정을 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
         data: (schedules) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, schedules, yearMonth, upcomingAsync),
       ),
     );
@@ -50,9 +43,13 @@ class ScheduleScreen extends ConsumerWidget {
   Map<DateTime, List<dynamic>> _buildEventMap(List<dynamic> schedules) {
     final Map<DateTime, List<dynamic>> eventMap = {};
     for (final schedule in schedules) {
-      final date = DateTime.parse(schedule['scheduled_date']);
-      final key = DateTime(date.year, date.month, date.day);
-      eventMap[key] = [...(eventMap[key] ?? []), schedule];
+      // 💡 백엔드 네이밍 규칙(snake_case vs camelCase) 호환성 보장
+      final rawDate = schedule['scheduledDate'] ?? schedule['scheduled_date'];
+      if (rawDate != null) {
+        final date = DateTime.parse(rawDate);
+        final key = DateTime(date.year, date.month, date.day);
+        eventMap[key] = [...(eventMap[key] ?? []), schedule];
+      }
     }
     return eventMap;
   }
@@ -61,16 +58,16 @@ class ScheduleScreen extends ConsumerWidget {
     return eventMap[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
-Widget _buildBody(
-    BuildContext context, 
-    WidgetRef ref, 
-    Color primaryColor, 
-    DateTime focusedDay, 
-    DateTime? selectedDay, 
-    List<dynamic> schedules, 
-    String yearMonth,
-    AsyncValue<List<dynamic>> upcomingAsync,
-  ) {
+  Widget _buildBody(
+      BuildContext context, 
+      WidgetRef ref, 
+      Color primaryColor, 
+      DateTime focusedDay, 
+      DateTime? selectedDay, 
+      List<dynamic> schedules, 
+      String yearMonth,
+      AsyncValue<List<dynamic>> upcomingAsync,
+    ) {
     final eventMap = _buildEventMap(schedules);
     final selectedEvents = selectedDay != null ? _getEventsForDay(selectedDay, eventMap) : [];
 
@@ -78,7 +75,6 @@ Widget _buildBody(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 캘린더 카드
           Container(
             margin: const EdgeInsets.all(20),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -89,7 +85,6 @@ Widget _buildBody(
             ),
             child: Column(
               children: [
-                // 캘린더 헤더
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Row(
@@ -100,25 +95,19 @@ Widget _buildBody(
                         children: [
                           IconButton(
                             icon: const Icon(Icons.chevron_left, color: Colors.black87),
-                            onPressed: () {
-                              ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month - 1, 1));
-                            },
+                            onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month - 1, 1)),
                           ),
                           Text(DateFormat('yyyy년 M월').format(focusedDay), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                           IconButton(
                             icon: const Icon(Icons.chevron_right, color: Colors.black87),
-                            onPressed: () {
-                              ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month + 1, 1));
-                            },
+                            onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month + 1, 1)),
                           ),
                         ],
                       ),
-                      // + 버튼
                       InkWell(
                         onTap: () => _showAddScheduleDialog(context, ref, selectedDay ?? DateTime.now(), yearMonth),
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 44, height: 44,
                           decoration: BoxDecoration(color: primaryColor.withOpacity(0.6), shape: BoxShape.circle),
                           child: const Icon(Icons.add, color: Colors.white, size: 26),
                         ),
@@ -126,8 +115,6 @@ Widget _buildBody(
                     ],
                   ),
                 ),
-
-                // 캘린더
                 TableCalendar(
                   locale: 'ko_KR',
                   firstDay: DateTime.utc(2020, 1, 1),
@@ -157,7 +144,6 @@ Widget _buildBody(
             ),
           ),
 
-          // 다가오는 일정 섹션
           upcomingAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (e, _) => const SizedBox.shrink(),
@@ -174,10 +160,10 @@ Widget _buildBody(
                       context: context,
                       ref: ref,
                       title: event['title'] ?? '',
-                      date: event['scheduled_date'] ?? '',
-                      dDay: 'D-${event['d_day'] ?? '?'}',
-                      type: event['schedule_type'] ?? '',
-                      scheduleId: event['schedule_id'],
+                      date: event['scheduledDate'] ?? event['scheduled_date'] ?? '',
+                      dDay: 'D-${event['dDay'] ?? event['d_day'] ?? '?'}',
+                      type: event['scheduleType'] ?? event['schedule_type'] ?? '',
+                      scheduleId: event['scheduleId'] ?? event['schedule_id'],
                       yearMonth: yearMonth,
                     )).toList(),
                     const Divider(height: 32, color: Colors.transparent),
@@ -187,7 +173,6 @@ Widget _buildBody(
             },
           ),
 
-          // 선택된 날짜 일정 리스트 (주요 일정)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -197,10 +182,7 @@ Widget _buildBody(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('주요 일정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('전체보기 >', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    ),
+                    TextButton(onPressed: () {}, child: const Text('전체보기 >', style: TextStyle(color: Colors.grey, fontSize: 13))),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -219,10 +201,10 @@ Widget _buildBody(
                             context: context,
                             ref: ref,
                             title: event['title'] ?? '',
-                            date: event['scheduled_date'] ?? '',
-                            dDay: 'D-${event['d_day'] ?? '?'}',
-                            type: event['schedule_type'] ?? '',
-                            scheduleId: event['schedule_id'],
+                            date: event['scheduledDate'] ?? event['scheduled_date'] ?? '',
+                            dDay: 'D-${event['dDay'] ?? event['d_day'] ?? '?'}',
+                            type: event['scheduleType'] ?? event['schedule_type'] ?? '',
+                            scheduleId: event['scheduleId'] ?? event['schedule_id'],
                             yearMonth: yearMonth,
                           );
                         },
@@ -243,6 +225,7 @@ Widget _buildBody(
     
     int? selectedCompanyId; 
     
+    // 차후에 기업 검색 API와 연동될 수 있도록 임시 기업 목록 유지
     final List<Map<String, dynamic>> dummyCompanies = [
       {'id': 1, 'name': '카카오'},
       {'id': 2, 'name': '네이버'},
@@ -255,9 +238,7 @@ Widget _buildBody(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -283,26 +264,16 @@ Widget _buildBody(
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
                         isExpanded: true,
                         hint: Text('어떤 기업의 일정인가요?', style: TextStyle(color: Colors.grey[400])),
                         value: selectedCompanyId,
                         items: dummyCompanies.map((company) {
-                          return DropdownMenuItem<int>(
-                            value: company['id'],
-                            child: Text(company['name']),
-                          );
+                          return DropdownMenuItem<int>(value: company['id'], child: Text(company['name']));
                         }).toList(),
-                        onChanged: (value) {
-                          setModalState(() {
-                            selectedCompanyId = value;
-                          });
-                        },
+                        onChanged: (value) => setModalState(() => selectedCompanyId = value),
                       ),
                     ),
                   ),
@@ -312,8 +283,7 @@ Widget _buildBody(
                     controller: titleController,
                     decoration: InputDecoration(
                       hintText: '일정 제목을 입력하세요',
-                      filled: true,
-                      fillColor: Colors.grey[50],
+                      filled: true, fillColor: Colors.grey[50],
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                     ),
                   ),
@@ -322,8 +292,7 @@ Widget _buildBody(
                     controller: memoController,
                     decoration: InputDecoration(
                       hintText: '메모 (선택)',
-                      filled: true,
-                      fillColor: Colors.grey[50],
+                      filled: true, fillColor: Colors.grey[50],
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                     ),
                   ),
@@ -349,9 +318,7 @@ Widget _buildBody(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(color: isSelected ? primaryColor : Colors.grey[300]!),
                         ),
-                        onSelected: (selected) {
-                          setModalState(() { selectedType = type; });
-                        },
+                        onSelected: (selected) => setModalState(() => selectedType = type),
                       );
                     }).toList(),
                   ),
@@ -380,17 +347,12 @@ Widget _buildBody(
                             memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
                           );
                           
-                          // 일정을 추가한 뒤에는 달력 데이터뿐만 아니라 다가오는 일정도 갱신
                           ref.invalidate(scheduleProvider(yearMonth));
                           ref.invalidate(upcomingScheduleProvider);
                           
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('일정 추가에 실패했어요')),
-                            );
-                          }
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
                         }
                       },
                       child: const Text('일정 저장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -440,7 +402,7 @@ Widget _buildBody(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(event['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(event['schedule_type'] ?? '', style: TextStyle(color: primaryColor, fontSize: 12)),
+                              Text(event['scheduleType'] ?? event['schedule_type'] ?? '', style: TextStyle(color: primaryColor, fontSize: 12)),
                             ],
                           ),
                         ),
@@ -449,14 +411,12 @@ Widget _buildBody(
                           onPressed: () async {
                             try {
                               final repository = ref.read(scheduleRepositoryProvider);
-                              await repository.deleteSchedule(event['schedule_id']);
+                              await repository.deleteSchedule(event['scheduleId'] ?? event['schedule_id']);
                               ref.invalidate(scheduleProvider(yearMonth));
-                              ref.invalidate(upcomingScheduleProvider); // 삭제 시에도 갱신
+                              ref.invalidate(upcomingScheduleProvider); 
                               if (context.mounted) Navigator.pop(context);
                             } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요')));
-                              }
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요')));
                             }
                           },
                         ),
@@ -494,8 +454,7 @@ Widget _buildBody(
       child: Row(
         children: [
           Container(
-            width: 6,
-            height: 84,
+            width: 6, height: 84,
             decoration: const BoxDecoration(
               color: typeColor,
               borderRadius: BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
@@ -525,9 +484,7 @@ Widget _buildBody(
                                   ref.invalidate(scheduleProvider(yearMonth));
                                   ref.invalidate(upcomingScheduleProvider);
                                 } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요')));
-                                  }
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제에 실패했어요')));
                                 }
                               },
                             ),
@@ -559,10 +516,7 @@ Widget _buildBody(
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: typeColor.withOpacity(0.5)),
                     ),
-                    child: Text(
-                      dDay,
-                      style: const TextStyle(color: typeColor, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
+                    child: Text(dDay, style: const TextStyle(color: typeColor, fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
                 ],
               ),
