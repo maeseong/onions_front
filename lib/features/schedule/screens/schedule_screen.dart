@@ -34,10 +34,16 @@ class ScheduleScreen extends ConsumerWidget {
           IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black87), onPressed: () {}),
         ],
       ),
-      body: scheduleAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => const Center(child: Text('일정을 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
-        data: (schedules) => _buildBody(context, ref, primaryColor, focusedDay, selectedDay, schedules, yearMonth, upcomingAsync),
+      body: _buildBody(
+        context: context,
+        ref: ref,
+        primaryColor: primaryColor,
+        focusedDay: focusedDay,
+        selectedDay: selectedDay,
+        schedules: scheduleAsync.value ?? [], 
+        yearMonth: yearMonth,
+        upcomingAsync: upcomingAsync,
+        isLoading: scheduleAsync.isLoading,
       ),
     );
   }
@@ -45,7 +51,6 @@ class ScheduleScreen extends ConsumerWidget {
   Map<DateTime, List<dynamic>> _buildEventMap(List<dynamic> schedules) {
     final Map<DateTime, List<dynamic>> eventMap = {};
     for (final schedule in schedules) {
-      // 💡 백엔드 네이밍 규칙(snake_case vs camelCase) 호환성 보장
       final rawDate = schedule['scheduledDate'] ?? schedule['scheduled_date'];
       if (rawDate != null) {
         final date = DateTime.parse(rawDate);
@@ -60,26 +65,29 @@ class ScheduleScreen extends ConsumerWidget {
     return eventMap[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
-  Widget _buildBody(
-      BuildContext context, 
-      WidgetRef ref, 
-      Color primaryColor, 
-      DateTime focusedDay, 
-      DateTime? selectedDay, 
-      List<dynamic> schedules, 
-      String yearMonth,
-      AsyncValue<List<dynamic>> upcomingAsync,
-    ) {
+  Widget _buildBody({
+    required BuildContext context, 
+    required WidgetRef ref, 
+    required Color primaryColor, 
+    required DateTime focusedDay, 
+    required DateTime? selectedDay, 
+    required List<dynamic> schedules, 
+    required String yearMonth,
+    required AsyncValue<List<dynamic>> upcomingAsync,
+    required bool isLoading,
+  }) {
     final eventMap = _buildEventMap(schedules);
     final selectedEvents = selectedDay != null ? _getEventsForDay(selectedDay, eventMap) : [];
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 32), 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 캘린더 카드
           Container(
             margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20), 
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
@@ -87,36 +95,36 @@ class ScheduleScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                if (isLoading)
+                  SizedBox(
+                    height: 2,
+                    child: LinearProgressIndicator(color: primaryColor, backgroundColor: Colors.grey[100]),
+                  )
+                else
+                  const SizedBox(height: 2), 
+                const SizedBox(height: 16),
+
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(width: 48),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left, color: Colors.black87),
-                            onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month - 1, 1)),
-                          ),
-                          Text(DateFormat('yyyy년 M월').format(focusedDay), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right, color: Colors.black87),
-                            onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month + 1, 1)),
-                          ),
-                        ],
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, color: Colors.black87),
+                        onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month - 1, 1)),
                       ),
-                      InkWell(
-                        onTap: () => _showAddScheduleDialog(context, ref, selectedDay ?? DateTime.now(), yearMonth),
-                        child: Container(
-                          width: 44, height: 44,
-                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.6), shape: BoxShape.circle),
-                          child: const Icon(Icons.add, color: Colors.white, size: 26),
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(DateFormat('yyyy년 M월').format(focusedDay), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, color: Colors.black87),
+                        onPressed: () => ref.read(focusedDayProvider.notifier).set(DateTime(focusedDay.year, focusedDay.month + 1, 1)),
                       ),
                     ],
                   ),
                 ),
+                
                 TableCalendar(
                   locale: 'ko_KR',
                   firstDay: DateTime.utc(2020, 1, 1),
@@ -141,6 +149,30 @@ class ScheduleScreen extends ConsumerWidget {
                     weekendTextStyle: const TextStyle(color: Colors.red),
                   ),
                   daysOfWeekStyle: const DaysOfWeekStyle(weekendStyle: TextStyle(color: Colors.red)),
+                ),
+
+                const SizedBox(height: 20),
+                
+                Align(
+                  alignment: Alignment.center,
+                  child: ElevatedButton(
+                    onPressed: () => _showAddScheduleDialog(context, ref, selectedDay ?? DateTime.now(), yearMonth),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      elevation: 0,
+                      minimumSize: const Size(120, 44), 
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, color: Colors.white, size: 18),
+                        SizedBox(width: 6),
+                        Text('일정 추가', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -214,7 +246,6 @@ class ScheduleScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 32),
         ],
       ),
     );
@@ -224,10 +255,8 @@ class ScheduleScreen extends ConsumerWidget {
     final TextEditingController titleController = TextEditingController();
     final TextEditingController memoController = TextEditingController();
     String selectedType = '기타';
-    
     int? selectedCompanyId; 
     
-    // 차후에 기업 검색 API와 연동될 수 있도록 임시 기업 목록 유지
     final List<Map<String, dynamic>> dummyCompanies = [
       {'id': 1, 'name': '카카오'},
       {'id': 2, 'name': '네이버'},
@@ -303,7 +332,7 @@ class ScheduleScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 10,
-                    children: ['서류', '코딩테스트', '면접', '기타'].map((type) {
+                    children: ['수업', '시험', '면접', '기타'].map((type) {
                       final isSelected = selectedType == type;
                       return ChoiceChip(
                         label: Text(type),
@@ -357,7 +386,7 @@ class ScheduleScreen extends ConsumerWidget {
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
                         }
                       },
-                      child: const Text('일정 저장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text('일정 저장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 32),
