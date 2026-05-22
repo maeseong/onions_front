@@ -16,28 +16,6 @@ class AuthRepository {
 
   AuthRepository(this._dio, this._storage);
 
-  Future<bool> loginWithEmail(String email, String password) async {
-    try {
-      final response = await _dio.post('/api/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
-
-      if (response.data['success'] == true) {
-        final data = response.data['data'];
-        
-        await _storage.write(key: AppConstants.accessTokenKey, value: data['accessToken']);
-        await _storage.write(key: AppConstants.refreshTokenKey, value: data['refreshToken']);
-        await _storage.write(key: 'isOnboarded', value: 'true');
-
-        return true;
-      }
-      return false;
-    } catch (e) {
-      throw Exception('네트워크 오류: $e');
-    }
-  }
-
   Future<Map<String, bool>> loginWithKakao(String kakaoToken) async {
     try {
       final response = await _dio.post('/api/auth/kakao', data: {'kakaoToken': kakaoToken});
@@ -90,7 +68,6 @@ class AuthRepository {
     }
   }
   
-  // 로그아웃 시에도 누가 로그아웃 하는지 토큰을 실어 보냄
   Future<void> logout() async {
     try {
       final token = await _storage.read(key: AppConstants.accessTokenKey);
@@ -99,7 +76,6 @@ class AuthRepository {
         options: Options(headers: {if (token != null) 'Authorization': 'Bearer $token'}),
       );
     } catch (e) {
-      // 로그아웃 실패(서버 에러 등) 시에도 기기의 데이터는 삭제
       debugPrint('서버 로그아웃 통신 에러: $e');
     } finally {
       await _storage.deleteAll(); 

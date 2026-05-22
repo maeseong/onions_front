@@ -17,20 +17,6 @@ class AuthController extends Notifier<bool> {
     return false;
   }
 
-  // 이메일 로그인 함수
-  Future<bool> loginWithEmail(String email, String password) async {
-    state = true;
-    try {
-      final repository = ref.read(authRepositoryProvider);
-      final success = await repository.loginWithEmail(email, password);
-      state = false;
-      return success;
-    } catch (e) {
-      state = false;
-      rethrow;
-    }
-  }
-
   // 카카오 로그인 함수
   Future<Map<String, bool>?> loginWithKakao() async {
     state = true;
@@ -85,7 +71,6 @@ class AuthController extends Notifier<bool> {
         return null; 
       }
 
-      debugPrint('[디버그] 백엔드 userinfo 호출용 Access Token 권한 요청');
       final scopes = ['email', 'profile', 'openid'];
       
       GoogleSignInClientAuthorization? clientAuth =
@@ -101,7 +86,6 @@ class AuthController extends Notifier<bool> {
         throw Exception('구글 Access Token을 가져오지 못했습니다.');
       }
 
-      debugPrint('[디버그] 구글 Access Token 발급 완료, 서버로 전송');
       final repository = ref.read(authRepositoryProvider);
       final loginResult = await repository.loginWithGoogle(token);
       

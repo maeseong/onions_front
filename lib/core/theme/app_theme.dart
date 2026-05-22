@@ -48,7 +48,6 @@ class AppTheme {
         color: primaryColor,
       ),
 
-      // 스펙 수정 바텀 시트 등에 나타나는 안드로이드/iOS의 연보라색 기본 배경 및 틴트 제거
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,

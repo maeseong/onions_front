@@ -36,7 +36,7 @@ class AchievementScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. 레벨 및 퀘스트 성장 단계 카드 (프로필 화면과 UI 통일)
+                // 1. 레벨 및 퀘스트 성장 단계 카드
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(24)),
