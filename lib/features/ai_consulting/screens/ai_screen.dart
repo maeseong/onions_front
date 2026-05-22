@@ -23,26 +23,11 @@ class AiScreen extends ConsumerWidget {
         titleSpacing: 20.0,
         centerTitle: false,
         title: const Text('AI 스펙진단', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 24)),
-        actions: [
-          // 프로필 화면의 데이터 원천을 비동기식 데이터 상태에서 안전하게 꺼내어 바텀시트로 넘기기
-          profileAsync.maybeWhen(
-            data: (profile) {
-              final spec = profile['spec'] ?? {};
-              return TextButton(
-                onPressed: () => _showEditSpecDialog(context, ref, spec, primaryColor),
-                child: Text('스펙 수정하기', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-              );
-            },
-            orElse: () => const SizedBox.shrink(),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Center(child: Text('스펙 정보를 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
         data: (profile) {
-          // 데이터 바인딩 및 가짜 껍데기 완전 제거
           final spec = profile['spec'] ?? {};
           final String userName = profile['name'] ?? profile['user_name'] ?? '사용자';
 
@@ -56,7 +41,7 @@ class AiScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$userName님의 스펙 데이터', style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('$userName님의 스펙을 AI와 함께 분석할 수 있어요', style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 24),
 
                 // 현재 스펙 영역
@@ -70,7 +55,19 @@ class AiScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('나의 현재 스펙', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('나의 스펙', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          GestureDetector(
+                            onTap: () => _showEditSpecDialog(context, ref, spec, primaryColor),
+                            child: Text(
+                              '스펙 수정', 
+                              style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14)
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
 
                       // 실시간 온보딩/수정 데이터 바인딩 그리드
@@ -121,7 +118,7 @@ class AiScreen extends ConsumerWidget {
     );
   }
 
-  // 스펙 수정 모달 바텀 시트 로직 이식
+  // 스펙 수정 모달 바텀 시트
   void _showEditSpecDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> currentSpec, Color primaryColor) {
     final gpaCtrl = TextEditingController(text: currentSpec['gpa']?.toString() ?? '');
     final toeicCtrl = TextEditingController(text: (currentSpec['toeicScore'] ?? currentSpec['toeic_score'])?.toString() ?? '');

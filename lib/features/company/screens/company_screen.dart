@@ -26,19 +26,23 @@ class CompanyScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          // 필터 탭
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [null, '대기업', '중견', '스타트업'].map((type) {
-                  final isSelected = selectedFilter == type;
-                  final label = type ?? '전체';
-                  return GestureDetector(
+            child: Row(
+              children: [null, '대기업', '중견', '스타트업'].asMap().entries.map((entry) {
+                final index = entry.key;
+                final type = entry.value;
+                final isSelected = selectedFilter == type;
+                final label = type ?? '전체';
+                
+                return Expanded(
+                  child: GestureDetector(
                     onTap: () => ref.read(companyFilterProvider.notifier).set(type),
                     child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: isSelected ? primaryColor : Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -53,13 +57,14 @@ class CompanyScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           const SizedBox(height: 16),
 
+          // 기업 목록 영역
           Expanded(
             child: companiesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),

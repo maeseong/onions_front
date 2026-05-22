@@ -14,6 +14,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final primaryColor = Theme.of(context).primaryColor;
     final profileAsync = ref.watch(profileProvider);
+    // 홈 화면 퀘스트 진행도 데이터를 가져오기 위해 구독
+    final growthAsync = ref.watch(growthProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -38,18 +40,12 @@ class ProfileScreen extends ConsumerWidget {
         error: (e, _) => const Center(child: Text('프로필을 불러오지 못했어요 😢')),
         data: (profile) {
           final spec = profile['spec'] ?? {};
-          final gamification = profile['gamification'] ?? {};
-          final targetCompanies = profile['targetCompanies'] ?? profile['target_companies'] as List? ?? [];
-          
-          final level = gamification['level'] ?? 1;
-          final totalExp = gamification['totalExp'] ?? gamification['total_exp'] ?? 0;
-          final nextLevelExp = level * 1000; // 임시 레벨업 기준 로직
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                // 1. 상단 성장 경험치 카드
+                // 1. 상단 성장 퀘스트 카드
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(24)),
@@ -68,46 +64,60 @@ class ProfileScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(profile['name'] ?? profile['user_name'] ?? '-', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                                Text(profile['name'] ?? profile['user_name']?? '-', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                                 Text('${profile['grade'] ?? '-'}학년 · ${profile['jobName'] ?? profile['job_name'] ?? '-'}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.star, color: Colors.white, size: 14),
-                                const SizedBox(width: 4),
-                                Text('Lv.$level', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('성장 경험치', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                      const SizedBox(height: 4),
-                      Text('$totalExp / $nextLevelExp EXP', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: (totalExp / nextLevelExp).clamp(0.0, 1.0),
-                          backgroundColor: Colors.white24, color: Colors.white, minHeight: 10,
-                        ),
+                      
+                      // 퀘스트 진행 데이터 바인딩
+                      growthAsync.maybeWhen(
+                        data: (growth) {
+                          final int completed = growth['completedQuests'] ?? 0;
+                          final int total = growth['totalQuests'] ?? 10;
+                          final double progress = (completed / (total > 0 ? total : 10)).clamp(0.0, 1.0);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('완료한 퀘스트', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  Text('$completed / $total개', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: Colors.white24,
+                                  color: Colors.white,
+                                  minHeight: 10,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '성장 트리 완성까지 ${total - completed}개의 퀘스트가 남았어요!',
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          );
+                        },
+                        orElse: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: Colors.white))),
                       ),
-                      const SizedBox(height: 12),
-                      Text('다음 레벨까지 ${nextLevelExp - totalExp} EXP 남음', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // 2. 내 스펙 (수정 버튼 연결)
+                // 2. 나의 스펙
                 _buildSectionCard(
-                  title: '내 스펙',
+                  title: '나의 스펙',
                   action: GestureDetector(
                     onTap: () => _showEditSpecDialog(context, ref, spec, primaryColor),
                     child: _buildPillButton('수정', Icons.edit, primaryColor),
@@ -125,7 +135,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // 3. 업적 및 뱃지 (클릭 시 화면 이동)
+                // 3. 업적 및 뱃지
                 InkWell(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AchievementScreen())),
                   child: Container(
@@ -166,25 +176,58 @@ class ProfileScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('로그아웃', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('정말 로그아웃 하시겠습니까?\n저장된 로그인 정보가 초기화됩니다.'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소', style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor, elevation: 0),
-            onPressed: () async {
-              const storage = FlutterSecureStorage();
-              await storage.deleteAll(); // 기기의 모든 정보 싹 비우기
-              if (context.mounted) {
-                // 로그인 화면으로 강제 이동 (라우팅 설정에 따라 .go('/login') 등으로 변경 가능)
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                context.go('/login'); 
-              }
-            },
-            child: const Text('로그아웃', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        backgroundColor: const Color(0xFFF8F9FA),
+        surfaceTintColor: Colors.transparent,
+        contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '로그아웃 할까요?', 
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                // 취소 버튼
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('취소', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 로그아웃 버튼
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      const storage = FlutterSecureStorage();
+                      await storage.deleteAll(); // 기기의 모든 정보 비우기
+                      if (context.mounted) {
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        context.go('/login'); 
+                      }
+                    },
+                    child: const Text('로그아웃', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -231,7 +274,7 @@ class ProfileScreen extends ConsumerWidget {
                       
                       // 데이터 갱신 (프로필 화면 & 홈 화면 동시 반영)
                       ref.invalidate(profileProvider);
-                      // ref.invalidate(growthProvider); // 홈 화면 Provider 임포트 시 주석 해제
+                      ref.invalidate(growthProvider); 
 
                       if (context.mounted) {
                         Navigator.pop(context);
