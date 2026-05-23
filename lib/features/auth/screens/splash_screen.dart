@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-// import '../../../core/constants/app_constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,10 +21,12 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuthStatus() async {
     final startTime = DateTime.now();
 
-    // 앱이 켜질 때마다 기존 로그인 기록을 싹 비워버립니다.
-    await _storage.deleteAll(); 
+    try {
+      await _storage.deleteAll().timeout(const Duration(seconds: 1));
+    } catch (e) {
+      debugPrint('[스플래시] 스토리지 초기화 실패 또는 지연: $e');
+    }
 
-    // 스플래시 화면을 최소 2초간 보여주기 위한 딜레이 계산
     final elapsed = DateTime.now().difference(startTime);
     final remainingDelay = const Duration(seconds: 2) - elapsed;
 
@@ -35,33 +36,28 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // 토큰 검사를 없애고, 무조건 로그인 화면으로 강제 이동
-    debugPrint('[스플래시] 로그인 화면으로 이동');
     context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).primaryColor;
-
     return Scaffold(
-      backgroundColor: primaryColor,
+      backgroundColor: const Color(0xFF61B099), 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
-                ],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: Image.asset(
+                'assets/images/splash_icon.png',
+                width: 140, 
+                height: 140,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.eco, size: 80, color: Colors.white),
               ),
-              child: Icon(Icons.eco, size: 64, color: primaryColor), 
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             const Text(
               '나만의 커리어 성장 트리', 
               style: TextStyle(color: Colors.white70, fontSize: 16, letterSpacing: 1.2)

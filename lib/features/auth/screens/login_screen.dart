@@ -13,7 +13,7 @@ class LoginScreen extends ConsumerWidget {
     final isLoading = ref.watch(authControllerProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF61B099),
       body: Stack(
         children: [
           // 1. 기본 로그인 화면
@@ -25,17 +25,28 @@ class LoginScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(Icons.eco, size: 72, color: primaryColor),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: Image.asset(
+                        'assets/images/splash_icon.png', 
+                        width: 140, 
+                        height: 140,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.eco, size: 80, color: Colors.white),
+                      ),
+                    ),
                     const SizedBox(height: 20),
+                    
                     const Text(
                       'SpecCheck',
-                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                      style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 1.2),
                     ),
                     const SizedBox(height: 16),
+                    
                     const Text(
                       '만나서 반가워요!\n나만의 성장 나무를 가꾸어 보세요',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.5),
+                      style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
                     ),
                     
                     const SizedBox(height: 60),
@@ -145,7 +156,7 @@ class LoginScreen extends ConsumerWidget {
                 child: Container(
                   color: Colors.black.withOpacity(0.15),
                   child: Center(
-                    child: CircularProgressIndicator(color: primaryColor),
+                    child: const CircularProgressIndicator(color: Colors.white), 
                   ),
                 ),
               ),
