@@ -67,7 +67,11 @@ class LoginScreen extends ConsumerWidget {
                               context.go('/home');
                             }
                           }
-                        } catch (e) {
+                        } catch (e, stackTrace) {
+                          debugPrint('[카카오/구글 로그인 에러 발생]');
+                          debugPrint('원인: $e');
+                          debugPrint('위치: $stackTrace');
+  
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다.')));
                           }
@@ -113,9 +117,13 @@ class LoginScreen extends ConsumerWidget {
                               context.go('/home');
                             }
                           }
-                        } catch (e) {
+                        } catch (e, stackTrace) {
+                          debugPrint('[카카오/구글 로그인 에러 발생]');
+                          debugPrint('원인: $e');
+                          debugPrint('위치: $stackTrace');
+  
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다.')));
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 실패: 서버 오류가 발생했습니다.')));
                           }
                         }
                       },
