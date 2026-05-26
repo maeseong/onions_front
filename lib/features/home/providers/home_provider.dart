@@ -11,13 +11,11 @@ final growthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     return result;
   } catch (e) {
     debugPrint('[API 에러] 내 성장 필드 실패: $e');
-    if (e is DioException && e.response?.statusCode == 404) {
-      return {
-        'totalQuests': 0, 'completedQuests': 0,
-        'totalExp': 0, 'nextLevelExp': 100,
-      };
-    }
-    rethrow;
+    // 에러 발생 시 무한 루프를 막기 위해 기본값 리턴
+    return {
+      'totalQuests': 0, 'completedQuests': 0,
+      'totalExp': 0, 'nextLevelExp': 100,
+    };
   }
 });
 
@@ -26,8 +24,8 @@ final mainQuestProvider = FutureProvider<List<dynamic>>((ref) async {
     final repository = ref.watch(homeRepositoryProvider);
     return await repository.fetchQuests(type: 'main');
   } catch (e) {
-    if (e is DioException && e.response?.statusCode == 404) return [];
-    rethrow;
+    // 어떤 에러든 빈 리스트를 반환하여 무한 재호출 방지
+    return [];
   }
 });
 
@@ -36,8 +34,8 @@ final subQuestProvider = FutureProvider<List<dynamic>>((ref) async {
     final repository = ref.watch(homeRepositoryProvider);
     return await repository.fetchQuests(type: 'sub');
   } catch (e) {
-    if (e is DioException && e.response?.statusCode == 404) return [];
-    rethrow;
+    // 어떤 에러든 빈 리스트를 반환하여 무한 재호출 방지
+    return [];
   }
 });
 
@@ -46,10 +44,8 @@ final roadmapProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final repository = ref.watch(homeRepositoryProvider);
     return await repository.fetchRoadmap();
   } catch (e) {
-    if (e is DioException && e.response?.statusCode == 404) {
-      return {'title': '아직 생성된 로드맵이 없어요 🌱', 'progress_rate': 0, 'stages': []};
-    }
-    rethrow;
+    // 에러 발생 시 안전하게 기본 빈 로드맵 반환
+    return {'title': '아직 생성된 로드맵이 없어요 🌱', 'progress_rate': 0, 'stages': []};
   }
 });
 
@@ -80,10 +76,8 @@ class QuestActionService {
       debugPrint('[API 요청] 퀘스트 $questId 완료 처리...');
       final repository = _ref.read(homeRepositoryProvider);
       
-      // 진짜 백엔드 서버에 퀘스트 완료 요청
       await repository.updateQuestStatus(questId, 'completed');
       
-      // 완료 후 화면 데이터들을 강제로 새로고침하여 최신 상태 유지
       _ref.invalidate(growthProvider);
       _ref.invalidate(mainQuestProvider);
       _ref.invalidate(subQuestProvider);
