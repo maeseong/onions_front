@@ -4,7 +4,7 @@ class AppConstants {
   // 로컬
   // static const String baseUrl = 'http://10.0.2.2:8000';
   // 백엔드 연결 시 이거 사용
-  static const String baseUrl = 'https://speccheck-production-c9e3.up.railway.app';
+  static const String baseUrl = 'http://43.203.249.124:8080';
 
   static const String accessTokenKey = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
