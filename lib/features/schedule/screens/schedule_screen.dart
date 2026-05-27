@@ -29,10 +29,6 @@ class ScheduleScreen extends ConsumerWidget {
           '일정',
           style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black87), onPressed: () {}),
-        ],
       ),
       body: _buildBody(
         context: context,
@@ -287,6 +283,7 @@ class ScheduleScreen extends ConsumerWidget {
                   
                   const Text('지원 기업', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
+                  
                   TextField(
                     controller: companyController,
                     decoration: InputDecoration(
@@ -360,7 +357,7 @@ class ScheduleScreen extends ConsumerWidget {
                           await repository.addSchedule(
                             title: titleController.text.trim(),
                             scheduleType: selectedType,
-                            companyId: 1, // 백엔드 수정 전 에러 방지용 더미 데이터
+                            companyId: 1, // 백엔드 API 에러 방지용 임시 더미 ID 전송
                             scheduledDate: DateFormat('yyyy-MM-dd').format(selectedDay),
                             memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
                           );
