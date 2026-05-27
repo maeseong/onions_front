@@ -87,26 +87,6 @@ class RoadmapDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            if (!isCompleted)
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // 향후 개별 단계 완료 API 연결 시 사용 가능
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('퀘스트를 먼저 완료해 주세요!')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: const Text('완료하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
           ],
         ),
       ),
