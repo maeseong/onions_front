@@ -254,14 +254,8 @@ class ScheduleScreen extends ConsumerWidget {
   void _showAddScheduleDialog(BuildContext context, WidgetRef ref, DateTime selectedDay, String yearMonth) {
     final TextEditingController titleController = TextEditingController();
     final TextEditingController memoController = TextEditingController();
+    final TextEditingController companyController = TextEditingController();
     String selectedType = '기타';
-    int? selectedCompanyId; 
-    
-    final List<Map<String, dynamic>> dummyCompanies = [
-      {'id': 1, 'name': '카카오'},
-      {'id': 2, 'name': '네이버'},
-      {'id': 3, 'name': '토스'},
-    ];
 
     final primaryColor = Theme.of(context).primaryColor;
 
@@ -293,19 +287,12 @@ class ScheduleScreen extends ConsumerWidget {
                   
                   const Text('지원 기업', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16)),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        isExpanded: true,
-                        hint: Text('어떤 기업의 일정인가요?', style: TextStyle(color: Colors.grey[400])),
-                        value: selectedCompanyId,
-                        items: dummyCompanies.map((company) {
-                          return DropdownMenuItem<int>(value: company['id'], child: Text(company['name']));
-                        }).toList(),
-                        onChanged: (value) => setModalState(() => selectedCompanyId = value),
-                      ),
+                  TextField(
+                    controller: companyController,
+                    decoration: InputDecoration(
+                      hintText: '지원 기업을 입력하세요',
+                      filled: true, fillColor: Colors.grey[50],
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -322,7 +309,7 @@ class ScheduleScreen extends ConsumerWidget {
                   TextField(
                     controller: memoController,
                     decoration: InputDecoration(
-                      hintText: '메모 (선택)',
+                      hintText: '메모',
                       filled: true, fillColor: Colors.grey[50],
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                     ),
@@ -363,8 +350,8 @@ class ScheduleScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요.')));
                           return;
                         }
-                        if (selectedCompanyId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('지원 기업을 선택해주세요.')));
+                        if (companyController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('지원 기업을 입력해주세요.')));
                           return;
                         }
 
@@ -373,7 +360,7 @@ class ScheduleScreen extends ConsumerWidget {
                           await repository.addSchedule(
                             title: titleController.text.trim(),
                             scheduleType: selectedType,
-                            companyId: selectedCompanyId!,
+                            companyId: 1, // 백엔드 수정 전 에러 방지용 더미 데이터
                             scheduledDate: DateFormat('yyyy-MM-dd').format(selectedDay),
                             memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
                           );
