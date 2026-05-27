@@ -21,7 +21,10 @@ class RoadmapDetailScreen extends StatelessWidget {
         ),
         title: Text(
           stage['stageName'] ?? stage['stage_name'] ?? '',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -32,14 +35,18 @@ class RoadmapDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isCompleted ? Colors.green.withOpacity(0.1) : primaryColor.withOpacity(0.1),
+                color: isCompleted
+                    ? Colors.green.withOpacity(0.1)
+                    : primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                    isCompleted
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
                     size: 16,
                     color: isCompleted ? Colors.green : primaryColor,
                   ),
@@ -64,7 +71,11 @@ class RoadmapDetailScreen extends StatelessWidget {
 
             Text(
               stage['description'] ?? '',
-              style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.6),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black54,
+                height: 1.6,
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -79,10 +90,19 @@ class RoadmapDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('단계 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '단계 정보',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
-                  _buildInfoRow('단계', '${stage['stageOrder'] ?? stage['stage_order'] ?? '-'}단계'),
-                  _buildInfoRow('상태', isCompleted ? '✅ 완료' : '🔄 진행중'),
+                  _buildInfoRow(
+                    '단계',
+                    '${stage['stageOrder'] ?? stage['stage_order'] ?? '-'}단계',
+                  ),
+                  _buildStatusInfoRow(
+                    isCompleted: isCompleted,
+                    primaryColor: primaryColor,
+                  ),
                 ],
               ),
             ),
@@ -101,6 +121,38 @@ class RoadmapDetailScreen extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(color: Colors.black54)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusInfoRow({
+    required bool isCompleted,
+    required Color primaryColor,
+  }) {
+    final statusColor = isCompleted ? Colors.green : primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('상태', style: TextStyle(color: Colors.black54)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isCompleted ? Icons.check_circle : Icons.autorenew,
+                size: 16,
+                color: statusColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isCompleted ? '완료' : '진행중',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ],
       ),
     );

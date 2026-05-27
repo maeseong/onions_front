@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart'; 
 import '../repositories/home_repository.dart';
 
 final growthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -13,8 +12,10 @@ final growthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     debugPrint('[API 에러] 내 성장 필드 실패: $e');
     // 에러 발생 시 무한 루프를 막기 위해 기본값 리턴
     return {
-      'totalQuests': 0, 'completedQuests': 0,
-      'totalExp': 0, 'nextLevelExp': 100,
+      'totalQuests': 0,
+      'completedQuests': 0,
+      'totalExp': 0,
+      'nextLevelExp': 100,
     };
   }
 });
@@ -49,14 +50,20 @@ final roadmapProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   }
 });
 
-final questTabProvider = NotifierProvider<QuestTabNotifier, int>(QuestTabNotifier.new);
+final questTabProvider = NotifierProvider<QuestTabNotifier, int>(
+  QuestTabNotifier.new,
+);
+
 class QuestTabNotifier extends Notifier<int> {
   @override
   int build() => 0;
   void set(int tab) => state = tab;
 }
 
-final roadmapExpandedProvider = NotifierProvider<RoadmapExpandedNotifier, bool>(RoadmapExpandedNotifier.new);
+final roadmapExpandedProvider = NotifierProvider<RoadmapExpandedNotifier, bool>(
+  RoadmapExpandedNotifier.new,
+);
+
 class RoadmapExpandedNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -75,9 +82,9 @@ class QuestActionService {
     try {
       debugPrint('[API 요청] 퀘스트 $questId 완료 처리...');
       final repository = _ref.read(homeRepositoryProvider);
-      
+
       await repository.updateQuestStatus(questId, 'completed');
-      
+
       _ref.invalidate(growthProvider);
       _ref.invalidate(mainQuestProvider);
       _ref.invalidate(subQuestProvider);

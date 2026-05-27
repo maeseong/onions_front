@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
@@ -19,9 +20,7 @@ class HomeRepository {
   Future<Options> _getHeaders() async {
     final token = await _storage.read(key: AppConstants.accessTokenKey);
     return Options(
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
+      headers: {if (token != null) 'Authorization': 'Bearer $token'},
     );
   }
 
@@ -50,19 +49,52 @@ class HomeRepository {
   }
 
   // 3. 퀘스트 목록 조회 API 연동
-  Future<List<dynamic>> fetchQuests({String type = 'main'}) async {
-    // 백엔드에서 퀘스트 타입을 구분할 수 있도록 쿼리 파라미터를 함께 보냄
+  Future<List<dynamic>> fetchQuests({String? type}) async {
+    debugPrint('[API 요청] GET ${_dio.options.baseUrl}/api/quests');
     final response = await _dio.get(
       '/api/quests',
-      queryParameters: {'type': type},
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] GET /api/quests status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] == true) {
-      return response.data['data'] ?? [];
+      final data = response.data['data'];
+      final quests = data is Map<String, dynamic> ? data['quests'] : null;
+      if (quests is List) {
+        if (type == null) return quests;
+        return quests.where((quest) {
+          if (quest is! Map) return false;
+          return _matchesQuestType(
+            quest['questType'] ?? quest['quest_type'],
+            type,
+          );
+        }).toList();
+      }
+      return [];
     }
     throw Exception('퀘스트 목록을 불러오지 못했습니다.');
   }
-  
+
+  bool _matchesQuestType(dynamic value, String expectedType) {
+    final normalizedValue = value?.toString().toLowerCase().replaceAll(
+      '-',
+      '_',
+    );
+    final normalizedExpected = expectedType.toLowerCase().replaceAll('-', '_');
+
+    if (normalizedValue == null) return false;
+    if (normalizedValue == normalizedExpected) return true;
+    if (normalizedExpected == 'main') {
+      return normalizedValue == 'main_quest' || normalizedValue == 'mainquest';
+    }
+    if (normalizedExpected == 'sub') {
+      return normalizedValue == 'sub_quest' || normalizedValue == 'subquest';
+    }
+    return false;
+  }
+
   // 4. 퀘스트 상태 변경(완료 처리) API 연동
   Future<void> updateQuestStatus(int questId, String status) async {
     final response = await _dio.patch(
