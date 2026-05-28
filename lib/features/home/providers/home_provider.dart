@@ -14,6 +14,10 @@ final growthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     return {
       'totalQuests': 0,
       'completedQuests': 0,
+      'remainingQuests': 0,
+      'fieldProgressRate': 0,
+      'plantedTreeCount': 0,
+      'maxTreeCount': 50,
       'totalExp': 0,
       'nextLevelExp': 100,
     };
@@ -45,6 +49,7 @@ final roadmapProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final repository = ref.watch(homeRepositoryProvider);
     return await repository.fetchRoadmap();
   } catch (e) {
+    debugPrint('[API 에러] 내 로드맵 실패: $e');
     // 에러 발생 시 안전하게 기본 빈 로드맵 반환
     return {'title': '아직 생성된 로드맵이 없어요 🌱', 'progress_rate': 0, 'stages': []};
   }
@@ -86,6 +91,7 @@ class QuestActionService {
       await repository.updateQuestStatus(questId, 'completed');
 
       _ref.invalidate(growthProvider);
+      _ref.invalidate(roadmapProvider);
       _ref.invalidate(mainQuestProvider);
       _ref.invalidate(subQuestProvider);
     } catch (e) {

@@ -38,12 +38,23 @@ class HomeRepository {
 
   // 2. 내 로드맵 조회 API 연동
   Future<Map<String, dynamic>> fetchRoadmap() async {
+    debugPrint('[API 요청] GET ${_dio.options.baseUrl}/api/roadmaps/me');
     final response = await _dio.get(
       '/api/roadmaps/me',
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] GET /api/roadmaps/me status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] == true) {
-      return response.data['data'] ?? {};
+      final data = response.data['data'];
+      if (data is Map<String, dynamic>) {
+        final roadmap = data['roadmap'];
+        if (roadmap is Map<String, dynamic>) return roadmap;
+        return data;
+      }
+      return {};
     }
     throw Exception('로드맵 데이터를 불러오지 못했습니다.');
   }
@@ -97,11 +108,18 @@ class HomeRepository {
 
   // 4. 퀘스트 상태 변경(완료 처리) API 연동
   Future<void> updateQuestStatus(int questId, String status) async {
+    debugPrint(
+      '[API 요청] PATCH ${_dio.options.baseUrl}/api/quests/$questId/status body={status: $status}',
+    );
     final response = await _dio.patch(
       '/api/quests/$questId/status',
       data: {'status': status},
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] PATCH /api/quests/$questId/status status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] != true) {
       throw Exception('퀘스트 상태 업데이트 실패');
     }

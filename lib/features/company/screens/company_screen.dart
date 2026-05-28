@@ -19,9 +19,19 @@ class CompanyScreen extends ConsumerWidget {
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,
-        title: const Text('기업 추천', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
+        title: const Text(
+          '기업 추천',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black87),
+            onPressed: () {},
+          ),
         ],
       ),
       body: Column(
@@ -30,15 +40,18 @@ class CompanyScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
-              children: [null, '대기업', '중견', '스타트업'].asMap().entries.map((entry) {
+              children: [null, '대기업', '중견', '스타트업'].asMap().entries.map((
+                entry,
+              ) {
                 final index = entry.key;
                 final type = entry.value;
                 final isSelected = selectedFilter == type;
                 final label = type ?? '전체';
-                
+
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => ref.read(companyFilterProvider.notifier).set(type),
+                    onTap: () =>
+                        ref.read(companyFilterProvider.notifier).set(type),
                     child: Container(
                       margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -46,7 +59,9 @@ class CompanyScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: isSelected ? primaryColor : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? primaryColor : Colors.grey[300]!),
+                        border: Border.all(
+                          color: isSelected ? primaryColor : Colors.grey[300]!,
+                        ),
                       ),
                       child: Text(
                         label,
@@ -68,13 +83,23 @@ class CompanyScreen extends ConsumerWidget {
           Expanded(
             child: companiesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => const Center(child: Text('기업 목록을 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
+              error: (e, _) => const Center(
+                child: Text(
+                  '기업 목록을 불러오지 못했어요 😢',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
               data: (data) {
-                final companies = data['companies'] as List? ?? [];
+                final companies = _asCompanyList(data['companies']);
                 final total = data['total'] ?? 0;
 
                 if (companies.isEmpty) {
-                  return const Center(child: Text('조건에 맞는 추천 기업이 없어요 🏢', style: TextStyle(color: Colors.black54)));
+                  return const Center(
+                    child: Text(
+                      '조건에 맞는 추천 기업이 없어요 🏢',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  );
                 }
 
                 return ListView.builder(
@@ -86,12 +111,18 @@ class CompanyScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Text(
                           '총 $total개 기업이 추천됐어요',
-                          style: const TextStyle(color: Colors.black54, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 13,
+                          ),
                         ),
                       );
                     }
-                    final company = companies[index - 1];
-                    return _buildCompanyCard(context, company, primaryColor);
+                    return _buildCompanyCard(
+                      context,
+                      companies[index - 1],
+                      primaryColor,
+                    );
                   },
                 );
               },
@@ -102,11 +133,25 @@ class CompanyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCompanyCard(BuildContext context, Map<String, dynamic> company, Color primaryColor) {
+  Widget _buildCompanyCard(
+    BuildContext context,
+    Map<String, dynamic> company,
+    Color primaryColor,
+  ) {
     final matchRate = company['matchRate'] ?? company['match_rate'] ?? 0;
-    final reasons = company['recommendationReasons'] ?? company['recommendation_reasons'] as List? ?? [];
-    final cName = company['companyName'] ?? company['company_name'] ?? '';
-    final cType = company['companyType'] ?? company['company_type'] ?? '';
+    final reasons = _asStringList(
+      company['recommendationReasons'] ?? company['recommendation_reasons'],
+    );
+    final cName =
+        company['companyName'] ??
+        company['company_name'] ??
+        company['name'] ??
+        '';
+    final cType =
+        company['companyType'] ??
+        company['company_type'] ??
+        company['type'] ??
+        '';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -125,7 +170,13 @@ class CompanyScreen extends ConsumerWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,12 +184,20 @@ class CompanyScreen extends ConsumerWidget {
             Row(
               children: [
                 Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Center(
                     child: Text(
                       cName.isNotEmpty ? cName.substring(0, 1) : '?',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
                     ),
                   ),
                 ),
@@ -147,27 +206,64 @@ class CompanyScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text('$cType · ${company['industry'] ?? ''}', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                      Text(
+                        cName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '$cType · ${company['industry'] ?? ''}',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                  child: Text('$matchRate%', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$matchRate%',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (reasons.isNotEmpty)
               Wrap(
-                spacing: 8, runSpacing: 8,
-                children: reasons.map((reason) {
+                spacing: 8,
+                runSpacing: 8,
+                children: reasons.map<Widget>((reason) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                    child: Text(reason.toString(), style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      reason.toString(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -177,17 +273,51 @@ class CompanyScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.black54),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Colors.black54,
+                    ),
                     const SizedBox(width: 4),
-                    Text(company['hiringSeason'] ?? company['hiring_season'] ?? '-', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                    Text(
+                      company['hiringSeason'] ??
+                          company['hiring_season'] ??
+                          '-',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
-                Text('상세보기 >', style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text(
+                  '상세보기 >',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _asCompanyList(dynamic value) {
+    if (value is! List) return const [];
+
+    return value
+        .whereType<Map>()
+        .map((company) => Map<String, dynamic>.from(company))
+        .toList();
+  }
+
+  List<String> _asStringList(dynamic value) {
+    if (value is! List) return const [];
+
+    return value.map((item) => item.toString()).toList();
   }
 }

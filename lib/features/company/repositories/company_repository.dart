@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_provider.dart';
@@ -18,7 +19,9 @@ class CompanyRepository {
   // API 요청 헤더에 토큰 달아주기
   Future<Options> _getHeaders() async {
     final token = await _storage.read(key: AppConstants.accessTokenKey);
-    return Options(headers: {if (token != null) 'Authorization': 'Bearer $token'});
+    return Options(
+      headers: {if (token != null) 'Authorization': 'Bearer $token'},
+    );
   }
 
   // 1. 맞춤형 추천 기업 목록 조회
@@ -26,27 +29,81 @@ class CompanyRepository {
     String sort = 'match_rate',
     String? companyType,
   }) async {
+    final companyTypeParam = _toCompanyTypeParam(companyType);
+    final queryParameters = {
+      'sort': sort,
+      if (companyTypeParam != null) 'company_type': companyTypeParam,
+    };
+    debugPrint(
+      '[API 요청] GET ${_dio.options.baseUrl}/api/companies/recommended query=$queryParameters',
+    );
     final response = await _dio.get(
       '/api/companies/recommended',
-      queryParameters: {
-        'sort': sort,
-        // 전체(null)가 아니면 필터 값(대기업, 중견 등)을 보냄
-        if (companyType != null && companyType != '전체') 'company_type': companyType,
-      },
+      queryParameters: queryParameters,
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] GET /api/companies/recommended status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] == true) {
-      return response.data['data'] ?? {};
+      return _normalizeCompanyList(response.data['data']);
     }
     throw Exception('기업 목록 조회 실패');
   }
 
+  String? _toCompanyTypeParam(String? companyType) {
+    return switch (companyType) {
+      null || '전체' => null,
+      '대기업' => 'large',
+      '중견' => 'mid',
+      '스타트업' => 'startup',
+      _ => companyType,
+    };
+  }
+
+  Map<String, dynamic> _normalizeCompanyList(dynamic data) {
+    if (data is List) {
+      return {'total': data.length, 'companies': data};
+    }
+    if (data is Map<String, dynamic>) {
+      final companies =
+          data['companies'] ??
+          data['recommendedCompanies'] ??
+          data['recommended_companies'] ??
+          data['companyList'] ??
+          data['company_list'] ??
+          data['items'] ??
+          data['content'];
+
+      if (companies is List) {
+        return {
+          ...data,
+          'total':
+              data['total'] ??
+              data['totalCount'] ??
+              data['total_count'] ??
+              companies.length,
+          'companies': companies,
+        };
+      }
+
+      return data;
+    }
+    return {'total': 0, 'companies': []};
+  }
+
   // 2. 기업 상세 정보 조회
   Future<Map<String, dynamic>> fetchCompanyDetail(int companyId) async {
+    debugPrint('[API 요청] GET ${_dio.options.baseUrl}/api/companies/$companyId');
     final response = await _dio.get(
       '/api/companies/$companyId',
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] GET /api/companies/$companyId status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] == true) {
       return response.data['data'] ?? {};
     }
@@ -55,10 +112,17 @@ class CompanyRepository {
 
   // 3. 합격자 스펙 대비 갭 분석 조회
   Future<Map<String, dynamic>> fetchMatchAnalysis(int companyId) async {
+    debugPrint(
+      '[API 요청] GET ${_dio.options.baseUrl}/api/companies/$companyId/match-analysis',
+    );
     final response = await _dio.get(
       '/api/companies/$companyId/match-analysis',
       options: await _getHeaders(),
     );
+    debugPrint(
+      '[API 응답] GET /api/companies/$companyId/match-analysis status=${response.statusCode} body=${response.data}',
+    );
+
     if (response.data['success'] == true) {
       return response.data['data'] ?? {};
     }

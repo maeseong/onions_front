@@ -8,7 +8,11 @@ class RoadmapDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    final isCompleted = stage['isCompleted'] ?? stage['is_completed'] ?? false;
+    final isCompleted =
+        stage['completed'] ??
+        stage['isCompleted'] ??
+        stage['is_completed'] ??
+        false;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],

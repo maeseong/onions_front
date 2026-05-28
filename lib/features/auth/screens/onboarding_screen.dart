@@ -71,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _internController.text.trim().isNotEmpty &&
           _awardController.text.trim().isNotEmpty;
     }
-    return true; 
+    return true;
   }
 
   void _nextPage() {
@@ -101,17 +101,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       final dio = ref.read(apiClientProvider).dio;
       const storage = FlutterSecureStorage();
-      
+
       // 로그인 시 발급받은 토큰을 꺼내서 서버로 전송할 준비
       final token = await storage.read(key: AppConstants.accessTokenKey);
-      
+
       await dio.post(
-        '/api/users/onboarding', 
+        '/api/users/onboarding',
         data: {
           'name': _nameController.text.trim(),
           'grade': _selectedGrade,
           'jobName': _selectedJob,
-          'preferredCompanyType': _selectedCompanyType, 
+          'preferredCompanyType': _selectedCompanyType,
           'gpa': double.tryParse(_gpaController.text) ?? 0.0,
           'toeicScore': int.tryParse(_toeicController.text) ?? 0,
           'certificateCount': int.tryParse(_certController.text) ?? 0,
@@ -200,20 +200,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   onPressed: (_isLoading || !_isNextButtonEnabled) ? null : _nextPage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
-                    disabledBackgroundColor: Colors.grey[300], 
+                    disabledBackgroundColor: Colors.grey[300],
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
-                          _currentPage == 3 ? '시작하기 🌱' : '다음',
-                          style: TextStyle(
-                            fontSize: 16, 
-                            fontWeight: FontWeight.bold,
-                            color: (_isLoading || !_isNextButtonEnabled) ? Colors.grey[500] : Colors.white,
-                          ),
-                        ),
+                    _currentPage == 3 ? '시작하기 🌱' : '다음',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: (_isLoading || !_isNextButtonEnabled) ? Colors.grey[500] : Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -233,7 +233,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 16),
           const Text('안녕하세요! 👋', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('이름과 학년을 입력해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
+          const Text('이름과 학년을 알려주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
           const Text('이름', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
@@ -287,15 +287,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         children: [
           Icon(Icons.work_outline, size: 48, color: primaryColor),
           const SizedBox(height: 16),
-          const Text('어떤 일을 하고 싶으신가요?', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          const Text('어떤 일을 하고 싶으세요?', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const Text('희망 직무와 선호 기업 유형을 선택해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-          const Text('직무', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text('희망 직무', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10, runSpacing: 10,
-            children: ['개발', '기획', '마케팅', '디자인', '데이터', '영업'].map((job) {
+            children: ['개발자/SW엔지니어', '데이터/AI', '인프라/클라우드/보안', '임베디드/펌웨어', '반도체/제조IT', 'QA/테스트'].map((job) {
               final isSelected = _selectedJob == job;
               return GestureDetector(
                 onTap: () => setState(() => _selectedJob = job),
@@ -312,7 +312,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             }).toList(),
           ),
           const SizedBox(height: 32),
-          const Text('기업 유형', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text('선호 기업 유형', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 12),
           Column(
             children: [
@@ -365,10 +365,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 16),
           const Text('현재 스펙을 알려주세요', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('해당 사항이 없으면 0으로 입력해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
+          const Text('없거나 모르면 0으로 입력해도 괜찮아요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
-          _buildSpecInput('평점', '예: 3.8', _gpaController, '/ 4.5'),
-          _buildSpecInput('토익 점수', '예: 820', _toeicController, '점'),
+          _buildSpecInput('학점 (GPA)', '예: 3.8', _gpaController, '/ 4.5'),
+          _buildSpecInput('토익 (TOEIC)', '예: 820', _toeicController, '점'),
           _buildSpecInput('자격증', '취득한 자격증 수', _certController, '개'),
           _buildSpecInput('프로젝트', '진행한 프로젝트 수', _projectController, '개'),
           _buildSpecInput('인턴 경험', '인턴십 횟수', _internController, '회'),
