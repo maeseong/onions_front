@@ -716,7 +716,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
-                        children: ['개발', '기획', '마케팅', '디자인', '데이터', '영업'].map((job) {
+                        children: ['개발자/SW엔지니어', '데이터/AI', '인프라/클라우드/보안', '임베디드/펌웨어', '반도체/제조IT', 'QA/테스트'].map((job) {
                           final isSelected = _selectedJob == job;
                           return GestureDetector(
                             onTap: () => setState(() => _selectedJob = job),
