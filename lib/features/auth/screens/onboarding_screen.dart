@@ -954,7 +954,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         child: _buildOptionalSpecInput(
                           label: '인턴 경험',
                           icon: Icons.business_center_outlined,
-                          hint: '인턴십 횟수',
+                          hint: '인턴 경험 횟수',
                           controller: _internController,
                           focusNode: _internFocus,
                           isChecked: _noIntern,
