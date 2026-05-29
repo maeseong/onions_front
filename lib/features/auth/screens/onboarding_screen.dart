@@ -571,7 +571,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '먼저 이름을 입력해주세요',
+                  '사용하실 닉네임을 입력해주세요',
                   style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
@@ -579,7 +579,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   controller: _nameController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
-                    hintText: '이름을 입력하세요',
+                    hintText: '닉네임을 입력하세요',
                     hintStyle: TextStyle(color: Colors.grey[400]),
                     filled: true,
                     fillColor: Colors.grey[50],
@@ -597,7 +597,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '다음은 현재 재학 중인 학년을 선택해주세요',
+                  '현재 재학 중인 학년을 선택해주세요',
                   style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
