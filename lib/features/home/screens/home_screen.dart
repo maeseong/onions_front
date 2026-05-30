@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spec_check/features/home/models/career_growth_model.dart';
-import '../widgets/ground.dart';
 import '../providers/home_provider.dart';
 import 'roadmap_detail_screen.dart';
 
@@ -9,58 +8,30 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const List<Offset> _allSlots = [
-    Offset(130.0, 9.0),
-    Offset(151.0, 17.0),
-    Offset(109.0, 17.0),
-    Offset(172.0, 25.0),
-    Offset(130.0, 25.0),
-    Offset(88.0, 25.0),
-    Offset(193.0, 33.0),
-    Offset(151.0, 33.0),
-    Offset(109.0, 33.0),
-    Offset(67.0, 33.0),
-    Offset(214.0, 41.0),
-    Offset(172.0, 41.0),
-    Offset(130.0, 41.0),
-    Offset(88.0, 41.0),
-    Offset(46.0, 41.0),
-    Offset(235.0, 49.0),
-    Offset(193.0, 49.0),
-    Offset(151.0, 49.0),
-    Offset(109.0, 49.0),
-    Offset(67.0, 49.0),
-    Offset(25.0, 49.0),
-    Offset(214.0, 57.0),
-    Offset(172.0, 57.0),
-    Offset(130.0, 57.0),
-    Offset(88.0, 57.0),
-    Offset(46.0, 57.0),
-    Offset(235.0, 65.0),
-    Offset(193.0, 65.0),
-    Offset(151.0, 65.0),
-    Offset(109.0, 65.0),
-    Offset(67.0, 65.0),
-    Offset(25.0, 65.0),
-    Offset(214.0, 73.0),
-    Offset(172.0, 73.0),
-    Offset(130.0, 73.0),
-    Offset(88.0, 73.0),
-    Offset(46.0, 73.0),
-    Offset(193.0, 81.0),
-    Offset(151.0, 81.0),
-    Offset(109.0, 81.0),
-    Offset(67.0, 81.0),
-    Offset(172.0, 89.0),
-    Offset(130.0, 89.0),
-    Offset(88.0, 89.0),
-    Offset(151.0, 97.0),
-    Offset(109.0, 97.0),
-    Offset(130.0, 105.0),
-    Offset(151.0, 113.0),
-    Offset(109.0, 113.0),
-    Offset(130.0, 121.0),
-  ];
-
+  // 1행 (맨 위)
+  Offset(155.0, 35.0),
+  // 2행
+  Offset(129.0, 50.0),
+  Offset(181.0, 50.0),
+  // 3행
+  Offset(103.0, 65.0),
+  Offset(155.0, 65.0),
+  Offset(207.0, 65.0),
+  // 4행
+  Offset(77.0, 80.0),
+  Offset(129.0, 80.0),
+  Offset(181.0, 80.0),
+  Offset(233.0, 80.0),
+  // 5행
+  Offset(103.0, 95.0),
+  Offset(155.0, 95.0),
+  Offset(207.0, 95.0),
+  // 6행
+  Offset(129.0, 110.0),
+  Offset(181.0, 110.0),
+  // 7행
+  Offset(155.0, 125.0),
+];
   List<Widget> _buildTrees(int plantedTreeCount, int maxTreeCount) {
     final treeImages = ['tree1.png', 'tree2.png', 'tree3.png', 'tree4.png'];
     final count = plantedTreeCount
@@ -188,15 +159,15 @@ class HomeScreen extends ConsumerWidget {
                               color: const Color(0xFF1B2B22),
                               child: Center(
                                 child: SizedBox(
-                                  width: 260,
-                                  height: 200,
+                                  width: 320,
+                                  height: 260,
                                   child: Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      const GroundPlot(
-                                        width: 260,
-                                        height: 130,
-                                        elevation: 25,
+                                      Image.asset(
+                                        'assets/images/ground.png',
+                                        width: 320,
+                                        height: 320,
                                       ),
                                       ..._buildTrees(
                                         growthData.plantedTreeCount,
@@ -644,7 +615,6 @@ class HomeScreen extends ConsumerWidget {
         statusColor = Colors.grey;
     }
 
-    // 이미 완료된 상태라면 완료 버튼 비활성화 시각화
     final bool canComplete =
         (status == 'in_progress' || status == 'IN_PROGRESS');
 
@@ -727,7 +697,6 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const Spacer(),
-
                     InkWell(
                       onTap: canComplete
                           ? () async {
@@ -735,6 +704,7 @@ class HomeScreen extends ConsumerWidget {
                                 await ref
                                     .read(questActionProvider)
                                     .completeQuest(questId);
+                                    ref.invalidate(growthProvider);
                                 if (context.mounted)
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
