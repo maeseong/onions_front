@@ -156,7 +156,13 @@ class HomeScreen extends ConsumerWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
-                              color: const Color(0xFF1B2B22),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                image: DecorationImage(
+                                  image: AssetImage('assets/images/b1.png'),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                               child: Center(
                                 child: SizedBox(
                                   width: 320,
