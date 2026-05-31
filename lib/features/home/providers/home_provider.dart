@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../repositories/home_repository.dart';
 
 final growthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -83,17 +84,20 @@ class QuestActionService {
   final Ref _ref;
   QuestActionService(this._ref);
 
-  Future<void> completeQuest(int questId) async {
+  Future<List<String>> completeQuest(int questId) async {
     try {
       debugPrint('[API 요청] 퀘스트 $questId 완료 처리...');
       final repository = _ref.read(homeRepositoryProvider);
 
-      await repository.updateQuestStatus(questId, 'completed');
+      final newBadges = await repository.updateQuestStatus(questId, 'completed');
 
       _ref.invalidate(growthProvider);
       _ref.invalidate(roadmapProvider);
       _ref.invalidate(mainQuestProvider);
       _ref.invalidate(subQuestProvider);
+      if (newBadges.isNotEmpty) _ref.invalidate(badgesProvider);
+
+      return newBadges;
     } catch (e) {
       debugPrint('[API 에러] 퀘스트 완료 실패: $e');
       rethrow;

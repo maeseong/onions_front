@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/company_provider.dart';
+import '../utils/company_logo.dart';
 import 'company_detail_screen.dart';
 
 class CompanyScreen extends ConsumerWidget {
@@ -152,17 +154,27 @@ class CompanyScreen extends ConsumerWidget {
         company['company_type'] ??
         company['type'] ??
         '';
+    final careerUrl = _asNullableString(
+      company['careerUrl'] ?? company['career_url'],
+    );
+    final logoAsset = companyLogoAsset(cName);
+
+    final companyId = company['companyId'] ?? company['company_id'];
+    final isAiOnly = companyId == null;
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CompanyDetailScreen(
-            companyId: company['companyId'] ?? company['company_id'],
-            companyName: cName,
-          ),
-        ),
-      ),
+      onTap: isAiOnly
+          ? null
+          : () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompanyDetailScreen(
+                    companyId: companyId,
+                    companyName: cName,
+                    careerUrl: careerUrl,
+                  ),
+                ),
+              ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
@@ -190,15 +202,19 @@ class CompanyScreen extends ConsumerWidget {
                     color: primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Text(
-                      cName.isNotEmpty ? cName.substring(0, 1) : '?',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: logoAsset != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Image.asset(
+                              logoAsset,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildLogoFallback(cName, primaryColor),
+                            ),
+                          )
+                        : _buildLogoFallback(cName, primaryColor),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -206,12 +222,39 @@ class CompanyScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        cName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              cName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (isAiOnly) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'AI 추천',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         '$cType · ${company['industry'] ?? ''}',
@@ -290,16 +333,35 @@ class CompanyScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                Text(
-                  '상세보기 >',
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                if (!isAiOnly)
+                  Text(
+                    '상세보기 >',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
               ],
             ),
+            if (careerUrl != null) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openCareerUrl(context, careerUrl),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('채용 페이지 보기'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor.withOpacity(0.35)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -319,5 +381,42 @@ class CompanyScreen extends ConsumerWidget {
     if (value is! List) return const [];
 
     return value.map((item) => item.toString()).toList();
+  }
+
+  String? _asNullableString(dynamic value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  Future<void> _openCareerUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    var didLaunch = false;
+
+    if (uri != null) {
+      try {
+        didLaunch = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        didLaunch = false;
+      }
+    }
+
+    if (!didLaunch && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('채용 페이지를 열 수 없습니다.')));
+    }
+  }
+
+  Widget _buildLogoFallback(String companyName, Color primaryColor) {
+    return Center(
+      child: Text(
+        companyName.isNotEmpty ? companyName.substring(0, 1) : '?',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: primaryColor,
+        ),
+      ),
+    );
   }
 }

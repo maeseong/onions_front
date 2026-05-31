@@ -19,9 +19,7 @@ class ScheduleRepository {
   Future<Options> _getHeaders() async {
     final token = await _storage.read(key: AppConstants.accessTokenKey);
     return Options(
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
+      headers: {if (token != null) 'Authorization': 'Bearer $token'},
     );
   }
 
@@ -56,24 +54,47 @@ class ScheduleRepository {
     required String title,
     required String scheduleType,
     required String scheduledDate,
-    required int companyId,
+    int? companyId,
     String? memo,
   }) async {
-    final response = await _dio.post(
-      '/api/schedules',
-      data: {
-        'title': title,
-        'scheduleType': scheduleType, 
-        'companyId': companyId,
-        'scheduledDate': scheduledDate,
-        if (memo != null) 'memo': memo,
-      },
-      options: await _getHeaders(),
-    );
-    if (response.data['success'] == true) {
-      return response.data['data'] ?? {};
+    final trimmedTitle = title.trim();
+    final trimmedType = scheduleType.trim();
+    final trimmedDate = scheduledDate.trim();
+
+    if (trimmedTitle.isEmpty) {
+      throw Exception('제목을 입력해주세요.');
     }
-    throw Exception('일정 추가 실패');
+    if (trimmedType.isEmpty) {
+      throw Exception('일정 유형을 선택해주세요.');
+    }
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmedDate)) {
+      throw Exception('일정 날짜 형식이 올바르지 않습니다.');
+    }
+
+    final requestBody = <String, dynamic>{
+      'title': trimmedTitle,
+      'scheduleType': trimmedType,
+      'scheduledDate': trimmedDate,
+      if (companyId != null) 'companyId': companyId,
+      if (memo != null) 'memo': memo,
+    };
+
+    try {
+      final response = await _dio.post(
+        '/api/schedules',
+        data: requestBody,
+        options: await _getHeaders(),
+      );
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? {};
+      }
+      throw Exception(response.data['message'] ?? '일정 추가 실패');
+    } on DioException catch (e) {
+      final message = e.response?.data is Map
+          ? e.response?.data['message'] as String?
+          : null;
+      throw Exception(message ?? '일정 추가 실패');
+    }
   }
 
   // 4. 일정 삭제

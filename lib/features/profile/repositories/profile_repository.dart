@@ -37,11 +37,15 @@ class ProfileRepository {
     }
   }
 
-  // 3. 획득한 뱃지 목록 조회 API
+  // 3. 전체 뱃지 목록 조회 (잠금 포함)
   Future<List<dynamic>> fetchBadges() async {
     final response = await _dio.get('/api/profile/badges/all', options: await _getHeaders());
     if (response.data['success'] == true) {
-      return response.data['data'] ?? [];
+      final data = response.data['data'];
+      if (data is Map<String, dynamic>) {
+        return data['badges'] ?? [];
+      }
+      return [];
     }
     throw Exception('뱃지 목록 조회 실패');
   }

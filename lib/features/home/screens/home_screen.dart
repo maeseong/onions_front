@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spec_check/features/home/models/career_growth_model.dart';
-import '../widgets/ground.dart';
 import '../providers/home_provider.dart';
 import 'roadmap_detail_screen.dart';
 
@@ -9,58 +8,30 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const List<Offset> _allSlots = [
-    Offset(130.0, 9.0),
-    Offset(151.0, 17.0),
-    Offset(109.0, 17.0),
-    Offset(172.0, 25.0),
-    Offset(130.0, 25.0),
-    Offset(88.0, 25.0),
-    Offset(193.0, 33.0),
-    Offset(151.0, 33.0),
-    Offset(109.0, 33.0),
-    Offset(67.0, 33.0),
-    Offset(214.0, 41.0),
-    Offset(172.0, 41.0),
-    Offset(130.0, 41.0),
-    Offset(88.0, 41.0),
-    Offset(46.0, 41.0),
-    Offset(235.0, 49.0),
-    Offset(193.0, 49.0),
-    Offset(151.0, 49.0),
-    Offset(109.0, 49.0),
-    Offset(67.0, 49.0),
-    Offset(25.0, 49.0),
-    Offset(214.0, 57.0),
-    Offset(172.0, 57.0),
-    Offset(130.0, 57.0),
-    Offset(88.0, 57.0),
-    Offset(46.0, 57.0),
-    Offset(235.0, 65.0),
-    Offset(193.0, 65.0),
-    Offset(151.0, 65.0),
-    Offset(109.0, 65.0),
-    Offset(67.0, 65.0),
-    Offset(25.0, 65.0),
-    Offset(214.0, 73.0),
-    Offset(172.0, 73.0),
-    Offset(130.0, 73.0),
-    Offset(88.0, 73.0),
-    Offset(46.0, 73.0),
-    Offset(193.0, 81.0),
-    Offset(151.0, 81.0),
-    Offset(109.0, 81.0),
-    Offset(67.0, 81.0),
-    Offset(172.0, 89.0),
-    Offset(130.0, 89.0),
-    Offset(88.0, 89.0),
-    Offset(151.0, 97.0),
-    Offset(109.0, 97.0),
-    Offset(130.0, 105.0),
-    Offset(151.0, 113.0),
-    Offset(109.0, 113.0),
-    Offset(130.0, 121.0),
-  ];
-
+  // 1행 (맨 위)
+  Offset(155.0, 35.0),
+  // 2행
+  Offset(129.0, 50.0),
+  Offset(181.0, 50.0),
+  // 3행
+  Offset(103.0, 65.0),
+  Offset(155.0, 65.0),
+  Offset(207.0, 65.0),
+  // 4행
+  Offset(77.0, 80.0),
+  Offset(129.0, 80.0),
+  Offset(181.0, 80.0),
+  Offset(233.0, 80.0),
+  // 5행
+  Offset(103.0, 95.0),
+  Offset(155.0, 95.0),
+  Offset(207.0, 95.0),
+  // 6행
+  Offset(129.0, 110.0),
+  Offset(181.0, 110.0),
+  // 7행
+  Offset(155.0, 125.0),
+];
   List<Widget> _buildTrees(int plantedTreeCount, int maxTreeCount) {
     final treeImages = ['tree1.png', 'tree2.png', 'tree3.png', 'tree4.png'];
     final count = plantedTreeCount
@@ -188,15 +159,15 @@ class HomeScreen extends ConsumerWidget {
                               color: const Color(0xFF1B2B22),
                               child: Center(
                                 child: SizedBox(
-                                  width: 260,
-                                  height: 200,
+                                  width: 320,
+                                  height: 260,
                                   child: Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      const GroundPlot(
-                                        width: 260,
-                                        height: 130,
-                                        elevation: 25,
+                                      Image.asset(
+                                        'assets/images/ground.png',
+                                        width: 320,
+                                        height: 320,
                                       ),
                                       ..._buildTrees(
                                         growthData.plantedTreeCount,
@@ -644,7 +615,6 @@ class HomeScreen extends ConsumerWidget {
         statusColor = Colors.grey;
     }
 
-    // 이미 완료된 상태라면 완료 버튼 비활성화 시각화
     final bool canComplete =
         (status == 'in_progress' || status == 'IN_PROGRESS');
 
@@ -727,22 +697,32 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const Spacer(),
-
                     InkWell(
                       onTap: canComplete
                           ? () async {
                               try {
-                                await ref
+                                final newBadges = await ref
                                     .read(questActionProvider)
                                     .completeQuest(questId);
-                                if (context.mounted)
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '퀘스트 완료! +$expReward XP 🌲',
+                                ref.invalidate(growthProvider);
+                                if (context.mounted) {
+                                  if (newBadges.isNotEmpty) {
+                                    await showDialog(
+                                      context: context,
+                                      builder: (_) => _BadgeAwardDialog(
+                                        badges: newBadges,
+                                        primaryColor: Theme.of(context).primaryColor,
+                                        expReward: expReward,
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('퀘스트 완료! +$expReward XP 🌲'),
+                                      ),
+                                    );
+                                  }
+                                }
                               } catch (e) {
                                 if (context.mounted)
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -781,6 +761,89 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BadgeAwardDialog extends StatelessWidget {
+  final List<String> badges;
+  final Color primaryColor;
+  final int expReward;
+
+  const _BadgeAwardDialog({
+    required this.badges,
+    required this.primaryColor,
+    required this.expReward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎉', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 8),
+            const Text(
+              '새 뱃지 획득!',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '+$expReward XP 🌲',
+              style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ...badges.map(
+              (badge) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryColor.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🏅', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

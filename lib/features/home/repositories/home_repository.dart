@@ -107,7 +107,7 @@ class HomeRepository {
   }
 
   // 4. 퀘스트 상태 변경(완료 처리) API 연동
-  Future<void> updateQuestStatus(int questId, String status) async {
+  Future<List<String>> updateQuestStatus(int questId, String status) async {
     debugPrint(
       '[API 요청] PATCH ${_dio.options.baseUrl}/api/quests/$questId/status body={status: $status}',
     );
@@ -123,5 +123,12 @@ class HomeRepository {
     if (response.data['success'] != true) {
       throw Exception('퀘스트 상태 업데이트 실패');
     }
+
+    final data = response.data['data'];
+    if (data is Map<String, dynamic>) {
+      final badges = data['newBadges'];
+      if (badges is List) return badges.map((e) => e.toString()).toList();
+    }
+    return [];
   }
 }

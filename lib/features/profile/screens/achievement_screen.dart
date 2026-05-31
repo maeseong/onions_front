@@ -1,15 +1,28 @@
+import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/profile_provider.dart';
 import '../../home/providers/home_provider.dart';
 
-class AchievementScreen extends ConsumerWidget {
+class AchievementScreen extends ConsumerStatefulWidget {
   const AchievementScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AchievementScreen> createState() => _AchievementScreenState();
+}
+
+class _AchievementScreenState extends ConsumerState<AchievementScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 화면 진입 시마다 뱃지 새로고침
+    Future.microtask(() => ref.invalidate(badgesProvider));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    
+
     // 백엔드에서 뱃지와 프로필 정보를 가져옴
     final badgesAsync = ref.watch(badgesProvider);
     final profileAsync = ref.watch(profileProvider);
@@ -118,24 +131,37 @@ class AchievementScreen extends ConsumerWidget {
                   loading: () => const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
                   error: (e, _) => const Center(child: Text('뱃지 목록을 불러오지 못했어요')),
                   data: (badges) {
-                    if (badges.isEmpty) return const Center(child: Text('아직 획득한 뱃지가 없어요 🌱'));
-                    
-                    return GridView.count(
-                      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 3, mainAxisSpacing: 16, crossAxisSpacing: 16,
-                      children: badges.map((badge) {
-                        final name = badge['name'] ?? badge['badge_name'] ?? '알 수 없음';
-                        final isUnlocked = badge['isUnlocked'] ?? badge['is_unlocked'] ?? false;
-                        
-                        // 아이콘 매핑
-                        IconData iconData = Icons.star;
-                        if (name.contains('첫') || name.contains('새싹')) iconData = Icons.eco;
-                        if (name.contains('성장') || name.contains('나무')) iconData = Icons.park;
-                        if (name.contains('연속') || name.contains('출석')) iconData = Icons.local_fire_department;
-                        if (name.contains('완성')) iconData = Icons.forest;
+                    if (badges.isEmpty) return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Text('아직 획득한 뱃지가 없어요\n퀘스트를 완료하면 뱃지를 받을 수 있어요 🌱',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.black54, height: 1.6)),
+                      ),
+                    );
 
-                        return _buildBadgeItem(name, iconData, isUnlocked, primaryColor);
-                      }).toList(),
+                    final unlocked = badges.where((b) => b['isUnlocked'] == true || b['is_unlocked'] == true).toList();
+                    final locked = badges.where((b) => b['isUnlocked'] != true && b['is_unlocked'] != true).toList();
+                    final sorted = [...unlocked, ...locked];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${unlocked.length} / ${badges.length}개 획득',
+                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 12),
+                        GridView.count(
+                          shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 3, mainAxisSpacing: 16, crossAxisSpacing: 16,
+                          childAspectRatio: 0.85,
+                          children: sorted.map((badge) {
+                            final name = badge['badgeName'] ?? badge['badge_name'] ?? badge['name'] ?? '알 수 없음';
+                            final description = badge['description'] ?? '';
+                            final isUnlocked = badge['isUnlocked'] == true || badge['is_unlocked'] == true;
+                            return _buildBadgeItem(name, description, isUnlocked, primaryColor);
+                          }).toList(),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -158,27 +184,47 @@ class AchievementScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBadgeItem(String name, IconData icon, bool isUnlocked, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(
-            color: isUnlocked ? Colors.white : Colors.grey[50], 
-            shape: BoxShape.circle, 
-            border: Border.all(color: isUnlocked ? color.withOpacity(0.2) : Colors.grey[200]!), 
-            boxShadow: isUnlocked ? [BoxShadow(color: color.withOpacity(0.1), blurRadius: 8)] : null
+  Widget _buildBadgeItem(String name, String description, bool isUnlocked, Color color) {
+    // 뱃지 이름에서 이모지만 추출 (첫 번째 문자)
+    final emoji = name.isNotEmpty ? name.characters.first : '🏅';
+    final displayName = name.replaceFirst(emoji, '').trim();
+
+    return Tooltip(
+      message: description,
+      child: Column(
+        children: [
+          Container(
+            width: 60, height: 60,
+            decoration: BoxDecoration(
+              color: isUnlocked ? color.withOpacity(0.08) : Colors.grey[100],
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isUnlocked ? color.withOpacity(0.3) : Colors.grey[300]!,
+                width: isUnlocked ? 2 : 1,
+              ),
+              boxShadow: isUnlocked ? [BoxShadow(color: color.withOpacity(0.15), blurRadius: 10)] : null,
+            ),
+            child: Center(
+              child: Text(
+                isUnlocked ? emoji : '🔒',
+                style: const TextStyle(fontSize: 26),
+              ),
+            ),
           ),
-          child: Icon(icon, color: isUnlocked ? color : Colors.grey[300], size: 30),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          name, 
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isUnlocked ? Colors.black87 : Colors.grey),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            displayName,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isUnlocked ? Colors.black87 : Colors.grey[400],
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
