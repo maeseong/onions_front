@@ -701,27 +701,48 @@ class HomeScreen extends ConsumerWidget {
                       onTap: canComplete
                           ? () async {
                               try {
-                                final newBadges = await ref
+                                final result = await ref
                                     .read(questActionProvider)
                                     .completeQuest(questId);
                                 ref.invalidate(growthProvider);
-                                if (context.mounted) {
-                                  if (newBadges.isNotEmpty) {
-                                    await showDialog(
-                                      context: context,
-                                      builder: (_) => _BadgeAwardDialog(
-                                        badges: newBadges,
-                                        primaryColor: Theme.of(context).primaryColor,
-                                        expReward: expReward,
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('퀘스트 완료! +$expReward XP 🌲'),
-                                      ),
-                                    );
-                                  }
+
+                                if (!context.mounted) return;
+
+                                final newBadges = (result['newBadges'] as List)
+                                    .map((e) => e.toString())
+                                    .toList();
+                                final levelUp = result['levelUp'] == true;
+                                final color = Theme.of(context).primaryColor;
+
+                                // 레벨업 팝업 (최우선)
+                                if (levelUp) {
+                                  await showDialog(
+                                    context: context,
+                                    builder: (_) => _LevelUpDialog(
+                                      primaryColor: color,
+                                      totalExp: result['totalExp'] ?? 0,
+                                    ),
+                                  );
+                                }
+
+                                if (!context.mounted) return;
+
+                                // 뱃지 팝업
+                                if (newBadges.isNotEmpty) {
+                                  await showDialog(
+                                    context: context,
+                                    builder: (_) => _BadgeAwardDialog(
+                                      badges: newBadges,
+                                      primaryColor: color,
+                                      expReward: expReward,
+                                    ),
+                                  );
+                                } else if (!levelUp) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('퀘스트 완료! +$expReward XP 🌲'),
+                                    ),
+                                  );
                                 }
                               } catch (e) {
                                 if (context.mounted)
@@ -761,6 +782,88 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LevelUpDialog extends StatelessWidget {
+  final Color primaryColor;
+  final int totalExp;
+
+  const _LevelUpDialog({
+    required this.primaryColor,
+    required this.totalExp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final level = (totalExp ~/ 1000) + 1;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('⭐', style: TextStyle(fontSize: 52)),
+            const SizedBox(height: 8),
+            Text(
+              'LEVEL UP!',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'Lv.$level',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '축하해요! 레벨이 올랐어요 🎊\n꾸준히 성장하고 있어요!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  '계속 성장하기 🌱',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

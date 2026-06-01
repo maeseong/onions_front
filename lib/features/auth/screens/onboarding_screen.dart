@@ -22,6 +22,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int? _selectedGrade;
   String? _selectedJob;
   String? _selectedCompanyType;
+  String? _selectedRegion;
+  int? _selectedSalary;
+  String? _selectedEmploymentPeriod;
   final TextEditingController _gpaController = TextEditingController();
   final TextEditingController _toeicController = TextEditingController();
   final TextEditingController _certController = TextEditingController();
@@ -112,6 +115,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'grade': _selectedGrade,
           'jobName': _selectedJob,
           'preferredCompanyType': _selectedCompanyType,
+          'preferredRegion': _selectedRegion,
+          'preferredSalary': _selectedSalary,
+          'preferredEmploymentPeriod': _selectedEmploymentPeriod,
           'gpa': double.tryParse(_gpaController.text) ?? 0.0,
           'toeicScore': int.tryParse(_toeicController.text) ?? 0,
           'certificateCount': int.tryParse(_certController.text) ?? 0,
@@ -350,6 +356,101 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               );
             }).toList(),
           ),
+
+          const SizedBox(height: 32),
+          const Text('선호 근무 지역', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 4),
+          const Text('통근 가능한 지역을 선택해주세요 (선택)', style: TextStyle(fontSize: 12, color: Colors.black45)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10, runSpacing: 10,
+            children: ['서울', '판교/분당', '경기', '인천', '부산', '대전', '무관'].map((region) {
+              final isSelected = _selectedRegion == region;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedRegion = isSelected ? null : region),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? primaryColor : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSelected ? primaryColor : Colors.grey[200]!),
+                  ),
+                  child: Text(region, style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold, fontSize: 13,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 32),
+          const Text('희망 연봉', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 4),
+          const Text('최소 희망 연봉을 선택해주세요 (선택)', style: TextStyle(fontSize: 12, color: Colors.black45)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10, runSpacing: 10,
+            children: [
+              {'label': '3,000만원 미만', 'value': 0},
+              {'label': '3,000만원 이상', 'value': 3000},
+              {'label': '4,000만원 이상', 'value': 4000},
+              {'label': '5,000만원 이상', 'value': 5000},
+              {'label': '6,000만원 이상', 'value': 6000},
+            ].map((item) {
+              final isSelected = _selectedSalary == item['value'] as int;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedSalary = isSelected ? null : item['value'] as int),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? primaryColor : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSelected ? primaryColor : Colors.grey[200]!),
+                  ),
+                  child: Text(item['label'] as String, style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold, fontSize: 13,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 32),
+          const Text('취업 희망 시기', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 4),
+          const Text('언제쯤 취업을 목표로 하나요? (선택)', style: TextStyle(fontSize: 12, color: Colors.black45)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10, runSpacing: 10,
+            children: [
+              {'label': '2025 상반기', 'value': '2025_first'},
+              {'label': '2025 하반기', 'value': '2025_second'},
+              {'label': '2026 상반기', 'value': '2026_first'},
+              {'label': '2026 하반기', 'value': '2026_second'},
+              {'label': '즉시 가능', 'value': 'asap'},
+            ].map((item) {
+              final isSelected = _selectedEmploymentPeriod == item['value'];
+              return GestureDetector(
+                onTap: () => setState(() =>
+                    _selectedEmploymentPeriod = isSelected ? null : item['value'] as String),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? primaryColor : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSelected ? primaryColor : Colors.grey[200]!),
+                  ),
+                  child: Text(item['label'] as String, style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold, fontSize: 13,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -427,6 +528,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _buildSummaryRow('학년', _selectedGrade != null ? '$_selectedGrade학년' : '-'),
                 _buildSummaryRow('희망 직무', _selectedJob ?? '-'),
                 _buildSummaryRow('선호 기업', _selectedCompanyType ?? '-'),
+                _buildSummaryRow('선호 지역', _selectedRegion ?? '-'),
+                _buildSummaryRow('희망 연봉', _selectedSalary != null && _selectedSalary! > 0 ? '$_selectedSalary만원 이상' : '-'),
+                _buildSummaryRow('취업 시기', _selectedEmploymentPeriod ?? '-'),
                 const Divider(height: 32),
                 _buildSummaryRow('학점', _gpaController.text.isEmpty ? '-' : '${_gpaController.text} / 4.5'),
                 _buildSummaryRow('토익', _toeicController.text.isEmpty ? '-' : '${_toeicController.text}점'),

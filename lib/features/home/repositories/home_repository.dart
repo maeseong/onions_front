@@ -107,7 +107,8 @@ class HomeRepository {
   }
 
   // 4. 퀘스트 상태 변경(완료 처리) API 연동
-  Future<List<String>> updateQuestStatus(int questId, String status) async {
+  /// 반환: {'newBadges': List<String>, 'levelUp': bool, 'totalExp': int}
+  Future<Map<String, dynamic>> updateQuestStatus(int questId, String status) async {
     debugPrint(
       '[API 요청] PATCH ${_dio.options.baseUrl}/api/quests/$questId/status body={status: $status}',
     );
@@ -127,8 +128,15 @@ class HomeRepository {
     final data = response.data['data'];
     if (data is Map<String, dynamic>) {
       final badges = data['newBadges'];
-      if (badges is List) return badges.map((e) => e.toString()).toList();
+      return {
+        'newBadges': badges is List
+            ? badges.map((e) => e.toString()).toList()
+            : <String>[],
+        'levelUp': data['levelUp'] == true,
+        'totalExp': data['totalExp'] ?? 0,
+        'earnedExp': data['earnedExp'] ?? 0,
+      };
     }
-    return [];
+    return {'newBadges': <String>[], 'levelUp': false, 'totalExp': 0, 'earnedExp': 0};
   }
 }

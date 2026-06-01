@@ -304,7 +304,9 @@ class ScheduleScreen extends ConsumerWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () => _showAllSchedulesSheet(
+                        context, ref, schedules, yearMonth, primaryColor,
+                      ),
                       child: const Text(
                         '전체보기 >',
                         style: TextStyle(color: Colors.grey, fontSize: 13),
@@ -822,6 +824,90 @@ class ScheduleScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showAllSchedulesSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<dynamic> schedules,
+    String yearMonth,
+    Color primaryColor,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            final sorted = [...schedules]
+              ..sort((a, b) {
+                final dateA = a['scheduledDate'] ?? a['scheduled_date'] ?? '';
+                final dateB = b['scheduledDate'] ?? b['scheduled_date'] ?? '';
+                return dateA.toString().compareTo(dateB.toString());
+              });
+
+            return Column(
+              children: [
+                // 핸들
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        '이번 달 전체 일정 (${sorted.length}개)',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: sorted.isEmpty
+                      ? const Center(
+                          child: Text('이번 달 일정이 없어요 📅',
+                              style: TextStyle(color: Colors.black54)),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          itemCount: sorted.length,
+                          itemBuilder: (context, index) {
+                            final event = sorted[index];
+                            return _buildScheduleItem(
+                              context: context,
+                              ref: ref,
+                              title: event['title'] ?? '',
+                              date: event['scheduledDate'] ?? event['scheduled_date'] ?? '',
+                              rawDDay: event['dday'] ?? event['dDay'] ?? event['d_day'],
+                              type: event['scheduleType'] ?? event['schedule_type'] ?? '',
+                              scheduleId: event['scheduleId'] ?? event['schedule_id'],
+                              yearMonth: yearMonth,
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

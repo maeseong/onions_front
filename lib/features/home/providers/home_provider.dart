@@ -84,20 +84,22 @@ class QuestActionService {
   final Ref _ref;
   QuestActionService(this._ref);
 
-  Future<List<String>> completeQuest(int questId) async {
+  /// 반환: {'newBadges': List<String>, 'levelUp': bool, 'totalExp': int, 'earnedExp': int}
+  Future<Map<String, dynamic>> completeQuest(int questId) async {
     try {
       debugPrint('[API 요청] 퀘스트 $questId 완료 처리...');
       final repository = _ref.read(homeRepositoryProvider);
 
-      final newBadges = await repository.updateQuestStatus(questId, 'completed');
+      final result = await repository.updateQuestStatus(questId, 'completed');
 
       _ref.invalidate(growthProvider);
       _ref.invalidate(roadmapProvider);
       _ref.invalidate(mainQuestProvider);
       _ref.invalidate(subQuestProvider);
-      if (newBadges.isNotEmpty) _ref.invalidate(badgesProvider);
+      final badges = result['newBadges'] as List;
+      if (badges.isNotEmpty) _ref.invalidate(badgesProvider);
 
-      return newBadges;
+      return result;
     } catch (e) {
       debugPrint('[API 에러] 퀘스트 완료 실패: $e');
       rethrow;

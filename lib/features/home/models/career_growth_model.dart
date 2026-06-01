@@ -3,7 +3,6 @@ class CareerGrowthModel {
   final int level;
   final int totalExp;
   final int nextLevelExp;
-  final int streakDays;
   final int completedQuests;
   final int totalQuests;
   final int remainingQuests;
@@ -16,7 +15,6 @@ class CareerGrowthModel {
     required this.level,
     required this.totalExp,
     required this.nextLevelExp,
-    required this.streakDays,
     required this.completedQuests,
     required this.totalQuests,
     required this.remainingQuests,
@@ -32,7 +30,6 @@ class CareerGrowthModel {
       level: json['level'] ?? 1,
       totalExp: json['totalExp'] ?? json['total_exp'] ?? 0,
       nextLevelExp: json['nextLevelExp'] ?? json['next_level_exp'] ?? 1000,
-      streakDays: json['streakDays'] ?? json['streak_days'] ?? 0,
       completedQuests: _readInt(json, 'completedQuests', 'completed_quests'),
       totalQuests: _readInt(json, 'totalQuests', 'total_quests', fallback: 20),
       remainingQuests: _readInt(json, 'remainingQuests', 'remaining_quests'),

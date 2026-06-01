@@ -64,21 +64,48 @@ class ProfileScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(profile['name'] ?? profile['user_name']?? '-', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                                Text('${profile['grade'] ?? '-'}학년 · ${profile['jobName'] ?? profile['job_name'] ?? '-'}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                Row(
+                                  children: [
+                                    Text(profile['name'] ?? profile['user_name'] ?? '-',
+                                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 8),
+                                    // 레벨 뱃지
+                                    growthAsync.maybeWhen(
+                                      data: (growth) {
+                                        final int level = growth['level'] ?? 1;
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.25),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text('Lv.$level',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        );
+                                      },
+                                      orElse: () => const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ),
+                                Text('${profile['grade'] ?? '-'}학년 · ${profile['jobName'] ?? profile['job_name'] ?? '-'}',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
                               ],
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      // 퀘스트 진행 데이터 바인딩
+
+                      // 퀘스트 진행 + XP 바
                       growthAsync.maybeWhen(
                         data: (growth) {
                           final int completed = growth['completedQuests'] ?? 0;
                           final int total = growth['totalQuests'] ?? 10;
-                          final double progress = (completed / (total > 0 ? total : 10)).clamp(0.0, 1.0);
+                          final int totalExp = growth['totalExp'] ?? 0;
+                          final int level = growth['level'] ?? 1;
+                          final int currentExp = totalExp % 1000;
+                          final double questProgress = (completed / (total > 0 ? total : 10)).clamp(0.0, 1.0);
+                          final double xpProgress = (currentExp / 1000).clamp(0.0, 1.0);
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,20 +117,38 @@ class ProfileScreen extends ConsumerWidget {
                                   Text('$completed / $total개', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
-                                  value: progress,
+                                  value: questProgress,
                                   backgroundColor: Colors.white24,
                                   color: Colors.white,
-                                  minHeight: 10,
+                                  minHeight: 8,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Lv.$level XP', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text('$currentExp / 1000 XP', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: xpProgress,
+                                  backgroundColor: Colors.white24,
+                                  color: Colors.yellowAccent,
+                                  minHeight: 8,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
                               Text(
-                                '성장 트리 완성까지 ${total - completed}개의 퀘스트가 남았어요!',
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                '다음 레벨까지 ${1000 - currentExp} XP 남았어요!',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
                               ),
                             ],
                           );

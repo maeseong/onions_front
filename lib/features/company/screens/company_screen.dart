@@ -5,11 +5,26 @@ import '../providers/company_provider.dart';
 import '../utils/company_logo.dart';
 import 'company_detail_screen.dart';
 
-class CompanyScreen extends ConsumerWidget {
+class CompanyScreen extends ConsumerStatefulWidget {
   const CompanyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompanyScreen> createState() => _CompanyScreenState();
+}
+
+class _CompanyScreenState extends ConsumerState<CompanyScreen> {
+  String _searchQuery = '';
+  bool _showSearch = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
     final companiesAsync = ref.watch(recommendedCompaniesProvider);
     final selectedFilter = ref.watch(companyFilterProvider);
@@ -21,18 +36,41 @@ class CompanyScreen extends ConsumerWidget {
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,
-        title: const Text(
-          '기업 추천',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: _showSearch
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '기업명 검색',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
+                  border: InputBorder.none,
+                ),
+                style: const TextStyle(fontSize: 16),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              )
+            : const Text(
+                '기업 추천',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black87),
-            onPressed: () {},
+            icon: Icon(
+              _showSearch ? Icons.close : Icons.search,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+              });
+            },
           ),
         ],
       ),
@@ -92,8 +130,16 @@ class CompanyScreen extends ConsumerWidget {
                 ),
               ),
               data: (data) {
-                final companies = _asCompanyList(data['companies']);
-                final total = data['total'] ?? 0;
+                final allCompanies = _asCompanyList(data['companies']);
+                final companies = _searchQuery.isEmpty
+                    ? allCompanies
+                    : allCompanies.where((c) {
+                        final name = (c['companyName'] ?? c['company_name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return name.contains(_searchQuery.toLowerCase());
+                      }).toList();
+                final total = companies.length;
 
                 if (companies.isEmpty) {
                   return const Center(
