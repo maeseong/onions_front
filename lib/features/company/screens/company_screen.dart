@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/company_provider.dart';
 import '../utils/company_logo.dart';
+import 'ai_company_detail_screen.dart';
 import 'company_detail_screen.dart';
 
 class CompanyScreen extends ConsumerStatefulWidget {
@@ -122,7 +123,7 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
           // 기업 목록 영역
           Expanded(
             child: companiesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => _buildSkeletonList(primaryColor),
               error: (e, _) => const Center(
                 child: Text(
                   '기업 목록을 불러오지 못했어요 😢',
@@ -210,7 +211,20 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
 
     return GestureDetector(
       onTap: isAiOnly
-          ? null
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AiCompanyDetailScreen(
+                    companyName: cName,
+                    companyType: cType,
+                    industry: company['industry'] ?? '',
+                    region: company['region'] ?? '',
+                    matchRate: (company['matchRate'] ?? 0) as int,
+                    reasons: _asStringList(company['recommendationReasons'] ?? company['recommendation_reasons']),
+                    careerUrl: careerUrl,
+                  ),
+                ),
+              )
           : () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -463,6 +477,79 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
           color: primaryColor,
         ),
       ),
+    );
+  }
+
+  Widget _buildSkeletonList(Color primaryColor) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: 5,
+      itemBuilder: (context, index) => _buildSkeletonCard(),
+    );
+  }
+
+  Widget _buildSkeletonCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _shimmerBox(width: 48, height: 48, radius: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _shimmerBox(width: 120, height: 16, radius: 6),
+                    const SizedBox(height: 6),
+                    _shimmerBox(width: 80, height: 12, radius: 4),
+                  ],
+                ),
+              ),
+              _shimmerBox(width: 48, height: 28, radius: 14),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _shimmerBox(width: 80, height: 24, radius: 8),
+              const SizedBox(width: 8),
+              _shimmerBox(width: 100, height: 24, radius: 8),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _shimmerBox(width: 60, height: 12, radius: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _shimmerBox({required double width, required double height, required double radius}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          ),
+        );
+      },
+      onEnd: () {},
     );
   }
 }

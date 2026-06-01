@@ -129,6 +129,31 @@ class CompanyRepository {
     throw Exception('매칭 분석 조회 실패');
   }
 
+  // 3-1. AI 기업 상세 조회
+  Future<Map<String, dynamic>> fetchAiCompanyDetail({
+    required String name,
+    String type = '',
+    String industry = '',
+    String region = '',
+    int matchRate = 0,
+  }) async {
+    final response = await _dio.get(
+      '/api/companies/ai-detail',
+      queryParameters: {
+        'name': name,
+        'type': type,
+        'industry': industry,
+        'region': region,
+        'matchRate': matchRate,
+      },
+      options: await _getHeaders(),
+    );
+    if (response.data['success'] == true) {
+      return response.data['data'] ?? {};
+    }
+    throw Exception('AI 기업 상세 조회 실패');
+  }
+
   // 4. 기업 스크랩 (찜하기)
   Future<void> scrapCompany(int companyId) async {
     final response = await _dio.post(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/tech_stack_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
@@ -31,6 +32,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final TextEditingController _projectController = TextEditingController();
   final TextEditingController _internController = TextEditingController();
   final TextEditingController _awardController = TextEditingController();
+  List<String> _selectedTechStacks = [];
+  bool _noToeic = false;
+  bool _noCert = false;
+  bool _noIntern = false;
+  bool _noAward = false;
 
   @override
   void initState() {
@@ -68,11 +74,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return _selectedJob != null && _selectedCompanyType != null;
     } else if (_currentPage == 2) {
       return _gpaController.text.trim().isNotEmpty &&
-          _toeicController.text.trim().isNotEmpty &&
-          _certController.text.trim().isNotEmpty &&
+          (_noToeic || _toeicController.text.trim().isNotEmpty) &&
+          (_noCert || _certController.text.trim().isNotEmpty) &&
           _projectController.text.trim().isNotEmpty &&
-          _internController.text.trim().isNotEmpty &&
-          _awardController.text.trim().isNotEmpty;
+          (_noIntern || _internController.text.trim().isNotEmpty) &&
+          (_noAward || _awardController.text.trim().isNotEmpty);
     }
     return true;
   }
@@ -119,12 +125,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'preferredSalary': _selectedSalary,
           'preferredEmploymentPeriod': _selectedEmploymentPeriod,
           'gpa': double.tryParse(_gpaController.text) ?? 0.0,
-          'toeicScore': int.tryParse(_toeicController.text) ?? 0,
-          'certificateCount': int.tryParse(_certController.text) ?? 0,
+          'toeicScore': _noToeic ? 0 : int.tryParse(_toeicController.text) ?? 0,
+          'certificateCount': _noCert ? 0 : int.tryParse(_certController.text) ?? 0,
           'projectCount': int.tryParse(_projectController.text) ?? 0,
-          'internshipCount': int.tryParse(_internController.text) ?? 0,
-          'awardCount': int.tryParse(_awardController.text) ?? 0,
-          'techStack': "",
+          'internshipCount': _noIntern ? 0 : int.tryParse(_internController.text) ?? 0,
+          'awardCount': _noAward ? 0 : int.tryParse(_awardController.text) ?? 0,
+          'techStack': _selectedTechStacks.join(', '),
           'targetCompanyIds': [],
         },
         options: Options(
@@ -424,13 +430,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 12),
           Wrap(
             spacing: 10, runSpacing: 10,
-            children: [
-              {'label': '2025 상반기', 'value': '2025_first'},
-              {'label': '2025 하반기', 'value': '2025_second'},
-              {'label': '2026 상반기', 'value': '2026_first'},
-              {'label': '2026 하반기', 'value': '2026_second'},
-              {'label': '즉시 가능', 'value': 'asap'},
-            ].map((item) {
+            children: _buildEmploymentPeriodOptions().map((item) {
               final isSelected = _selectedEmploymentPeriod == item['value'];
               return GestureDetector(
                 onTap: () => setState(() =>
@@ -466,14 +466,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 16),
           const Text('현재 스펙을 알려주세요', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('없거나 모르면 0으로 입력해도 괜찮아요', style: TextStyle(fontSize: 15, color: Colors.black54)),
+          const Text('없는 항목은 "아직 없음"을 체크해주세요', style: TextStyle(fontSize: 15, color: Colors.black54)),
           const SizedBox(height: 40),
           _buildSpecInput('학점 (GPA)', '예: 3.8', _gpaController, '/ 4.5'),
-          _buildSpecInput('토익 (TOEIC)', '예: 820', _toeicController, '점'),
-          _buildSpecInput('자격증', '취득한 자격증 수', _certController, '개'),
+          _buildSpecInputWithCheck('토익 (TOEIC)', '예: 820', _toeicController, '점', _noToeic, (v) => setState(() { _noToeic = v; if (v) _toeicController.clear(); })),
+          _buildSpecInputWithCheck('자격증', '취득한 자격증 수', _certController, '개', _noCert, (v) => setState(() { _noCert = v; if (v) _certController.clear(); })),
           _buildSpecInput('프로젝트', '진행한 프로젝트 수', _projectController, '개'),
-          _buildSpecInput('인턴 경험', '인턴십 횟수', _internController, '회'),
-          _buildSpecInput('수상 경력', '수상 횟수', _awardController, '회'),
+          _buildSpecInputWithCheck('인턴 경험', '인턴십 횟수', _internController, '회', _noIntern, (v) => setState(() { _noIntern = v; if (v) _internController.clear(); })),
+          _buildSpecInputWithCheck('수상 경력', '수상 횟수', _awardController, '회', _noAward, (v) => setState(() { _noAward = v; if (v) _awardController.clear(); })),
+          _buildTechStackInput(),
         ],
       ),
     );
@@ -500,6 +501,88 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 현재 날짜 기준으로 아직 지나지 않은 취업 희망 시기만 반환
+  /// 상반기: 1~6월, 하반기: 7~12월
+  List<Map<String, String>> _buildEmploymentPeriodOptions() {
+    final now = DateTime.now();
+    final year = now.year;
+    final isSecondHalf = now.month >= 7; // 7월 이후면 하반기
+
+    final options = <Map<String, String>>[];
+
+    for (int y = year; y <= year + 1; y++) {
+      // 상반기: 현재 연도 상반기는 7월 이전(1~6월)에만 포함
+      if (y > year || !isSecondHalf) {
+        options.add({'label': '$y 상반기', 'value': '${y}_first'});
+      }
+      // 하반기: 항상 포함
+      options.add({'label': '$y 하반기', 'value': '${y}_second'});
+    }
+
+    options.add({'label': '즉시 가능', 'value': 'asap'});
+    options.add({'label': '잘 모르겠어요', 'value': 'unknown'});
+    return options;
+  }
+
+  Widget _buildSpecInputWithCheck(
+    String label, String hint, TextEditingController controller,
+    String suffix, bool isChecked, ValueChanged<bool> onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              GestureDetector(
+                onTap: () => onChanged(!isChecked),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 20, height: 20,
+                      child: Checkbox(
+                        value: isChecked,
+                        onChanged: (v) => onChanged(v ?? false),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text('아직 없음', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            enabled: !isChecked,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: isChecked ? '아직 없음' : hint,
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              suffixText: isChecked ? null : suffix,
+              filled: true,
+              fillColor: isChecked ? Colors.grey[100] : Colors.grey[50],
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTechStackInput() {
+    return TechStackSelector(
+      selected: _selectedTechStacks,
+      onChanged: (list) => setState(() => _selectedTechStacks = list),
     );
   }
 
@@ -538,6 +621,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _buildSummaryRow('프로젝트', _projectController.text.isEmpty ? '-' : '${_projectController.text}개'),
                 _buildSummaryRow('인턴', _internController.text.isEmpty ? '-' : '${_internController.text}회'),
                 _buildSummaryRow('수상', _awardController.text.isEmpty ? '-' : '${_awardController.text}회'),
+                _buildSummaryRow('기술스택', _selectedTechStacks.isEmpty ? '-' : _selectedTechStacks.join(', ')),
               ],
             ),
           ),
