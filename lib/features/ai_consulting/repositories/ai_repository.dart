@@ -263,7 +263,7 @@ class AiRepository {
     yield* _sseStream(_dio.post(
       '/api/ai/simulate',
       data: {
-        'spec_changes': specChanges,
+        'specChanges': specChanges,  // spec_changes → specChanges
         if (companyName != null) 'companyName': companyName,
       },
       options: Options(

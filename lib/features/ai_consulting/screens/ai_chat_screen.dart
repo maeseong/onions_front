@@ -190,7 +190,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       _isLoading = true;
       _simulateResult = null;
     });
-
+    debugPrint('[시뮬] gpa: $_simGpa, toeic: $_simToeic, intern: $_simInternship, contest: $_simContest');
+    debugPrint('[시뮬] company: $_simulationCompany');
     debugPrint('[시뮬레이션] companyName: $_simulationCompany');
     String botText = '';
     try {
