@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../repositories/ai_repository.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter/foundation.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -28,6 +30,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   double _simToeic = 820;
   int _simInternship = 0;
   int _simContest = 0;
+  
+  // 상태 변수 추가
+  String? _simulationCompany;
+  // bool _waitingForCompany = false;
+  // int _pendingTab = -1;
 
   @override
   void initState() {
@@ -65,6 +72,15 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _onTabTap(int tab) async {
+    if (_activeTab == tab) {
+      // 같은 탭 클릭하면 닫기
+      setState(() {
+        _activeTab = -1;
+        _gapResult = null;
+        _simulateResult = null;
+      });
+      return;
+    }
     setState(() => _activeTab = tab);
     if (tab == 0) await _runSpecAnalysis();
     if (tab == 1) await _runGapAnalysis();
@@ -104,33 +120,69 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     }
   }
 
+  Future<String?> _askCompanyName() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('목표 기업 입력'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '기업명을 입력하세요 (예: 삼성전자)',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.pop(context, v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 2. 갭 분석
   Future<void> _runGapAnalysis() async {
-    _addUserMessage('갭 분석');
+    final companyName = await _askCompanyName();
+    if (companyName == null || companyName.isEmpty) return;
+
+    _addUserMessage('갭 분석 - $companyName');
     setState(() {
       _isLoading = true;
       _gapResult = null;
     });
 
     try {
-      final res = await ref.read(aiRepositoryProvider).getGapAnalysis();
+      final res = await ref.read(aiRepositoryProvider).gapAnalysis(companyName: companyName);
       setState(() {
         _isLoading = false;
-        _gapResult = res['data'] ?? res;
+        _gapResult = res;
       });
-      _addBotMessage('목표 기업과의 갭 분석 결과입니다.');
+      _addBotMessage('$companyName 기업과의 갭 분석 결과예요!');
     } catch (e) {
-      // 에러 발생 시 명확하게 실패를 알림
       setState(() => _isLoading = false);
-      _addBotMessage('갭 분석 데이터를 불러오는데 실패했어요. 다시 시도해 주세요.\n(에러: $e)');
+      _addBotMessage('갭 분석 중 오류가 발생했어요.\n(에러: $e)');
     }
   }
 
-  // 3. 시뮬레이션
   Future<void> _showSimulation() async {
-    _addUserMessage('시뮬레이션');
-    setState(() { _simulateResult = null; });
-    _addBotMessage('스펙을 조정하여 합격률 변화를 확인해보세요!');
+    final companyName = await _askCompanyName();
+    if (companyName == null || companyName.isEmpty) return;
+
+    _addUserMessage('시뮬레이션 - $companyName');
+    setState(() {
+      _simulateResult = null;
+      _simulationCompany = companyName;
+    });
+    _addBotMessage('$companyName 기업 기준으로 스펙을 조정하여 합격률 변화를 확인해보세요!');
   }
 
   Future<void> _runSimulate() async {
@@ -138,25 +190,29 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       _isLoading = true;
       _simulateResult = null;
     });
+
+    debugPrint('[시뮬레이션] companyName: $_simulationCompany');
+    String botText = '';
     try {
-      final res = await ref.read(aiRepositoryProvider).simulate(
-        companyId: 1,
+      await for (final event in ref.read(aiRepositoryProvider).simulateStream(
         specChanges: {
           'gpa': _simGpa,
           'toeic_score': _simToeic.round(),
           'internship_count': _simInternship,
           'contest_count': _simContest,
         },
-      );
-      setState(() {
-        _isLoading = false;
-        _simulateResult = res['data'] ?? res;
-      });
-      _addBotMessage('시뮬레이션 결과입니다.');
-    } catch (e) {
-      // 에러 발생 시 명확하게 실패를 알림
+        companyName: _simulationCompany,
+      )) {
+        final content = event['content'] ?? event['text'] ?? '';
+        if (content.isNotEmpty && content != '[DONE]') {
+          botText += content;
+        }
+      }
       setState(() => _isLoading = false);
-      _addBotMessage('시뮬레이션 실행에 실패했어요. 스펙 값을 확인하고 다시 시도해 주세요.\n(에러: $e)');
+      if (botText.isNotEmpty) _addBotMessage(botText);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _addBotMessage('시뮬레이션 실행에 실패했어요.\n(에러: $e)');
     }
   }
 
@@ -170,13 +226,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
     String reply = '';
     try {
-      await for (final event in ref.read(aiRepositoryProvider).analyzeSpec(text)) {
-        if (event['type'] == 'text') reply += (event['content'] ?? '');
+      await for (final event in ref.read(aiRepositoryProvider).chat(text)) {
+        final content = event['content'] ?? event['text'] ?? '';
+        if (content.isNotEmpty && content != '[DONE]') reply += content;
       }
       setState(() => _isLoading = false);
-      _addBotMessage(reply.isEmpty ? '분석을 완료했습니다!' : reply);
+      _addBotMessage(reply.isEmpty ? '죄송해요, 다시 시도해주세요.' : reply);
     } catch (e) {
-      // 에러 발생 시 명확하게 실패를 알림
       setState(() => _isLoading = false);
       _addBotMessage('메시지 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
     }
@@ -212,7 +268,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 if (_isLoading) _buildTypingIndicator(),
                 if (_activeTab == 0 && _analysisResult != null) _buildSpecAnalysisCard(),
                 if (_activeTab == 1 && _gapResult != null) _buildGapCard(),
-                if (_activeTab == 2) _buildSimulationCard(),
+                if (_activeTab == 2 && _simulationCompany != null) _buildSimulationCard(),
                 const SizedBox(height: 12),
               ],
             ),
@@ -248,7 +304,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 ),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
               ),
-              child: Text(msg.text, style: TextStyle(color: isUser ? Colors.white : Colors.black87, fontSize: 14)),
+              child: isUser
+              ? Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14))
+              : MarkdownBody(
+                data: msg.text,
+                softLineBreak: true,  // 추가
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(color: Colors.black87, fontSize: 14),
+                  h2: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+                  h3: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold),
+                  listBullet: const TextStyle(color: Colors.black87, fontSize: 14),
+                ),
+              ),
             ),
           ),
         ],
@@ -356,49 +423,89 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   Widget _buildGapCard() {
     final data = _gapResult!;
-    final predictions = (data['predictions'] as List?)?.cast<Map>() ?? [];
-    final gapItems = (data['gapItems'] ?? data['gap_items'] as List?)?.cast<Map>() ?? [];
+    final items = (data['items'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
+    final advice = data['advice'] as String? ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('합격 예측 분석', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 12),
-          if (predictions.isNotEmpty) Row(children: predictions.map((p) => Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(14)),
-              child: Column(children: [
-                Text((p['companyName'] ?? p['company_name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('${p['predictedRate'] ?? p['predicted_rate'] ?? 0}%',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _primaryColor)),
-              ]),
-            ),
-          )).toList()),
-          if (predictions.isNotEmpty) const SizedBox(height: 16),
-          const Row(children: [
-            Icon(Icons.bolt, color: Colors.orange, size: 18),
-            SizedBox(width: 4),
-            Text('합격자 평균과의 갭 분석', style: TextStyle(fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 12),
-          ...gapItems.map((item) => _buildGapBar(
-            label: (item['label'] ?? '').toString(),
-            mine: (item['mine'] as num?)?.toDouble() ?? 0,
-            avg: (item['avg'] as num?)?.toDouble() ?? 0,
-          )),
+          const Text('📊 갭 분석 결과', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 16),
+          ...items.map((item) {
+            final mine = (item['mine'] as num?)?.toDouble() ?? 0;
+            final avg = (item['avg'] as num?)?.toDouble() ?? 0;
+            final label = item['label'] as String? ?? '';
+            final unit = item['unit'] as String? ?? '';
+            final maxVal = [mine, avg].reduce((a, b) => a > b ? a : b) * 1.2;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const SizedBox(width: 4),
+                    const Text('나', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: maxVal > 0 ? mine / maxVal : 0,
+                          minHeight: 12,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('$mine$unit', style: TextStyle(fontSize: 12, color: _primaryColor, fontWeight: FontWeight.bold)),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    const SizedBox(width: 4),
+                    const Text('평균', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: maxVal > 0 ? avg / maxVal : 0,
+                          minHeight: 12,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('$avg$unit', style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold)),
+                  ]),
+                ],
+              ),
+            );
+          }),
+          if (advice.isNotEmpty) ...[
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text('💡 핵심 조언', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 4),
+            Text(advice, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          ],
           const SizedBox(height: 8),
-          if (gapItems.isNotEmpty) Row(children: [
-            _legendDot(Colors.grey[400]!, '내 스펙'),
+          Row(children: [
+            _legendDot(_primaryColor, '내 스펙'),
             const SizedBox(width: 12),
-            _legendDot(_primaryColor, '합격자 평균'),
+            _legendDot(Colors.orange, '합격자 평균'),
           ]),
         ],
       ),
