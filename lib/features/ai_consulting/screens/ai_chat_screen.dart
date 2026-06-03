@@ -20,7 +20,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _scrollController = ScrollController();
 
   final List<_ChatMessage> _messages = [];
-  int _activeTab = 0;
+  int _activeTab = -1;
   bool _isLoading = false;
 
   Map<String, dynamic>? _analysisResult;
@@ -37,8 +37,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   String? _simulationCompany;
   int _simCert = 0;
   int _simProject = 0;
-  // bool _waitingForCompany = false;
-  // int _pendingTab = -1;
 
   @override
   void initState() {
@@ -83,6 +81,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   Future<void> _onTabTap(int tab) async {
     if (_isLoading) return;
+    if (_activeTab == tab) {
+      setState(() {
+        _activeTab = -1;
+        _gapResult = null;
+        _simulateResult = null;
+      });
+      return;
+    }
     setState(() => _activeTab = tab);
     if (tab == 0) await _runSpecAnalysis();
     if (tab == 1) await _runGapAnalysis();
@@ -177,24 +183,59 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('목표 기업 입력'),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          '목표 기업 입력',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: '기업명을 입력하세요 (예: 삼성전자)',
-            border: OutlineInputBorder(),
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('확인'),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.grey[200],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('취소', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(context, controller.text.trim()),
+                  child: const Text('확인', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -204,7 +245,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   // 2. 갭 분석
   Future<void> _runGapAnalysis() async {
     final companyName = await _askCompanyName();
-    if (companyName == null || companyName.isEmpty) return;
+    if (companyName == null || companyName.isEmpty) {
+      setState(() => _activeTab = -1);
+      return;
+    }
 
     final isRerun = _messages.any((m) => m.cardType == _CardType.gap);
     if (!isRerun) _addUserMessage('갭 분석 - $companyName');
@@ -233,7 +277,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   Future<void> _showSimulation() async {
     final companyName = await _askCompanyName();
-    if (companyName == null || companyName.isEmpty) return;
+    if (companyName == null || companyName.isEmpty) {
+      setState(() => _activeTab = -1);
+      return;
+    }
 
     _addUserMessage('시뮬레이션 - $companyName');
     setState(() {
@@ -319,6 +366,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.grey[50],
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -392,7 +440,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               ? Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14))
               : MarkdownBody(
                 data: msg.text,
-                softLineBreak: true,  // 추가
+                softLineBreak: true,
                 styleSheet: MarkdownStyleSheet(
                   p: const TextStyle(color: Colors.black87, fontSize: 14),
                   h2: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
@@ -494,7 +542,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           ]),
           const SizedBox(height: 10),
           ...items.map((s) {
-            // "항목명: 설명" 형태면 항목명을 굵게 분리
             final colonIdx = s.indexOf(':');
             final hasColon = colonIdx > 0 && colonIdx < s.length - 1;
             final label = hasColon ? s.substring(0, colonIdx).trim() : null;
@@ -618,7 +665,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   .where((l) => l.isNotEmpty)
                   .toList();
 
-              // 앞 3줄은 핵심 조언, 나머지는 더보기
               final coreLines = allLines.take(3).toList();
               final extraLines = allLines.skip(3).toList();
 
@@ -628,7 +674,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 final label = hasColon ? line.substring(0, colonIdx).trim() : null;
                 final desc  = hasColon ? line.substring(colonIdx + 1).trim() : line;
 
-                // 설명 없이 레이블만 있으면 소제목으로 렌더링
                 if (label != null && desc.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -1021,32 +1066,38 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
+  // 하단 탭 버튼 동일한 비율로 한 줄 꽉 차게 변경
   Widget _buildBottomBar() {
     final tabs = ['스펙 분석', '갭 분석', '시뮬레이션'];
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: List.generate(tabs.length, (i) {
-          final selected = _activeTab == i;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => _onTabTap(i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: selected ? _primaryColor : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(20),
+        Row(
+          children: List.generate(tabs.length, (i) {
+            final selected = _activeTab == i;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i < tabs.length - 1 ? 8 : 0),
+                child: GestureDetector(
+                  onTap: () => _onTabTap(i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? _primaryColor : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(tabs[i],
+                        style: TextStyle(color: selected ? Colors.white : Colors.black54,
+                            fontWeight: FontWeight.w600, fontSize: 13)),
+                  ),
                 ),
-                child: Text(tabs[i],
-                    style: TextStyle(color: selected ? Colors.white : Colors.black54,
-                        fontWeight: FontWeight.w600, fontSize: 13)),
               ),
-            ),
-          );
-        })),
-        const SizedBox(height: 8),
+            );
+          }),
+        ),
+        const SizedBox(height: 12),
         Row(children: [
           Expanded(
             child: Container(

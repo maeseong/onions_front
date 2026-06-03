@@ -214,7 +214,6 @@ class ScheduleScreen extends ConsumerWidget {
                   },
                   eventLoader: (day) => _getEventsForDay(day, eventMap),
                   headerVisible: false,
-                  // 달력 점(마커)을 커스텀하여 D-Day 색상과 동일하게 표시
                   calendarBuilders: CalendarBuilders(
                     markerBuilder: (context, date, events) {
                       if (events.isEmpty) return const SizedBox.shrink();
@@ -938,7 +937,7 @@ class ScheduleScreen extends ConsumerWidget {
                 Expanded(
                   child: sorted.isEmpty
                       ? const Center(
-                          child: Text('이번 달 일정이 없어요 📅',
+                          child: Text('이번 달 일정이 없어요',
                               style: TextStyle(color: Colors.black54)),
                         )
                       : ListView.builder(
