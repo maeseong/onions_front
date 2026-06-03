@@ -33,6 +33,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   
   // 상태 변수 추가
   String? _simulationCompany;
+  int _simCert = 0;      // 추가
+  int _simProject = 0;   // 추가
   // bool _waitingForCompany = false;
   // int _pendingTab = -1;
 
@@ -200,7 +202,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'gpa': _simGpa,
           'toeic_score': _simToeic.round(),
           'internship_count': _simInternship,
-          'contest_count': _simContest,
+          'certificate_count': _simCert,
+          'project_count': _simProject,
         },
         companyName: _simulationCompany,
       )) {
@@ -425,7 +428,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget _buildGapCard() {
     final data = _gapResult!;
     final items = (data['items'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
-    final advice = data['advice'] as String? ?? '';
+    final advice = data['advice'] is String 
+      ? data['advice'] as String 
+      : (data['advice'] as List?)?.join(', ') ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -564,9 +569,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           const SizedBox(height: 16),
           _buildSlider('학점', _simGpa, 0, 4.5, (v) => setState(() => _simGpa = v), decimals: 1),
           _buildSlider('어학', _simToeic, 0, 990, (v) => setState(() => _simToeic = v)),
-          _buildCounter('자격증', '정보처리기사'),
+          _buildStepper('자격증', _simCert, (v) => setState(() => _simCert = v)),
+          _buildStepper('프로젝트', _simProject, (v) => setState(() => _simProject = v)),
           _buildStepper('인턴십', _simInternship, (v) => setState(() => _simInternship = v)),
-          _buildStepper('공모전', _simContest, (v) => setState(() => _simContest = v)),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -582,20 +587,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               child: const Text('이 스펙으로 시뮬레이션하기', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
-          if (_simulateResult != null) ...[
-            const SizedBox(height: 16),
-            const Text('시뮬레이션 결과', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: _buildResultRateCard('카카오', _simulateResult!['kakao'] ?? 0)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildResultRateCard('네이버', _simulateResult!['naver'] ?? 0)),
-            ]),
-            if (_simulateResult!['message'] != null) ...[
-              const SizedBox(height: 10),
-              Text(_simulateResult!['message'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            ],
-          ],
         ],
       ),
     );
