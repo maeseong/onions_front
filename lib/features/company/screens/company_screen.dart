@@ -34,6 +34,7 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,
@@ -259,20 +260,18 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(11),
                     child: logoAsset != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(6),
-                            child: Image.asset(
-                              logoAsset,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildLogoFallback(cName, primaryColor),
-                            ),
+                        ? Image.asset(
+                            logoAsset,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildLogoFallback(cName, primaryColor),
                           )
                         : _buildLogoFallback(cName, primaryColor),
                   ),

@@ -27,6 +27,7 @@ class CompanyDetailScreen extends ConsumerWidget {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.grey[50],
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
@@ -141,20 +142,18 @@ class CompanyDetailScreen extends ConsumerWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey[200]!),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(15),
                       child: logoAsset != null
-                          ? Padding(
-                              padding: const EdgeInsets.all(7),
-                              child: Image.asset(
-                                logoAsset,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildLogoFallback(cName, primaryColor),
-                              ),
+                          ? Image.asset(
+                              logoAsset,
+                              fit: BoxFit.cover, 
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildLogoFallback(cName, primaryColor),
                             )
                           : _buildLogoFallback(cName, primaryColor),
                     ),

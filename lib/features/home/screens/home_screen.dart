@@ -544,14 +544,28 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 data: (quests) {
                   if (quests.isEmpty) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Text(
-                          '아직 부여된 퀘스트가 없어요 🌱',
-                          style: TextStyle(color: Colors.black54),
+                    return growthAsync.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Text('아직 부여된 퀘스트가 없어요 🌱',
+                              style: TextStyle(color: Colors.black54)),
                         ),
                       ),
+                      data: (growthJson) {
+                        final growthData = CareerGrowthModel.fromJson(growthJson);
+                        final isDone = growthData.completedQuests >= growthData.totalQuests && growthData.totalQuests > 0;
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Text(
+                              isDone ? '모든 퀘스트를 완료했어요 🌳' : '아직 부여된 퀘스트가 없어요 🌱',
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                          ),
+                        );
+                      },
                     );
                   }
                   return Column(
@@ -742,6 +756,18 @@ class HomeScreen extends ConsumerWidget {
                                     SnackBar(
                                       content: Text('퀘스트 완료! +$expReward XP 🌲'),
                                     ),
+                                  );
+                                }
+                                if (!context.mounted) return;
+                                final newGrowth = await ref.read(growthProvider.future);
+                                final completed = newGrowth['completedQuests'] ?? 0;
+                                final total = newGrowth['totalQuests'] ?? 0;
+
+                                if (completed >= total && total > 0) {
+                                  if (!context.mounted) return;
+                                  await showDialog(
+                                    context: context,
+                                    builder: (_) => _AllQuestsCompleteDialog(primaryColor: color),
                                   );
                                 }
                               } catch (e) {
@@ -942,6 +968,60 @@ class _BadgeAwardDialog extends StatelessWidget {
                 child: const Text(
                   '확인',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AllQuestsCompleteDialog extends StatelessWidget {
+  final Color primaryColor;
+  const _AllQuestsCompleteDialog({required this.primaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🌳', style: TextStyle(fontSize: 52)),
+            const SizedBox(height: 8),
+            const Text(
+              '모든 퀘스트 완료!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '16개의 나무를 모두 심었어요!\n정말 대단해요 🎉',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
