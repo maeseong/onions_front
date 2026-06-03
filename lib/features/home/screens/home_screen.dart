@@ -8,30 +8,31 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const List<Offset> _allSlots = [
-  // 1행 (맨 위)
-  Offset(155.0, 35.0),
-  // 2행
-  Offset(129.0, 50.0),
-  Offset(181.0, 50.0),
-  // 3행
-  Offset(103.0, 65.0),
-  Offset(155.0, 65.0),
-  Offset(207.0, 65.0),
-  // 4행
-  Offset(77.0, 80.0),
-  Offset(129.0, 80.0),
-  Offset(181.0, 80.0),
-  Offset(233.0, 80.0),
-  // 5행
-  Offset(103.0, 95.0),
-  Offset(155.0, 95.0),
-  Offset(207.0, 95.0),
-  // 6행
-  Offset(129.0, 110.0),
-  Offset(181.0, 110.0),
-  // 7행
-  Offset(155.0, 125.0),
-];
+    // 1행 (맨 위)
+    Offset(155.0, 35.0),
+    // 2행
+    Offset(129.0, 50.0),
+    Offset(181.0, 50.0),
+    // 3행
+    Offset(103.0, 65.0),
+    Offset(155.0, 65.0),
+    Offset(207.0, 65.0),
+    // 4행
+    Offset(77.0, 80.0),
+    Offset(129.0, 80.0),
+    Offset(181.0, 80.0),
+    Offset(233.0, 80.0),
+    // 5행
+    Offset(103.0, 95.0),
+    Offset(155.0, 95.0),
+    Offset(207.0, 95.0),
+    // 6행
+    Offset(129.0, 110.0),
+    Offset(181.0, 110.0),
+    // 7행
+    Offset(155.0, 125.0),
+  ];
+
   List<Widget> _buildTrees(int plantedTreeCount, int maxTreeCount) {
     final treeImages = ['tree1.png', 'tree2.png', 'tree3.png', 'tree4.png'];
     final count = plantedTreeCount
@@ -465,48 +466,59 @@ class HomeScreen extends ConsumerWidget {
               ],
               const SizedBox(height: 24),
 
+              // 💡 퀘스트 선택 탭 (메인 퀘스트 빡! 강조, 배경을 비우고 테두리만 두껍게)
               Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
                       onTap: () => ref.read(questTabProvider.notifier).set(0),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: questTab == 0 ? primaryColor : Colors.white,
+                          // 💡 배경은 연하게, 테두리는 4.0 두께로 아주 찐하게 설정해서 테두리가 완벽하게 눈에 띄도록 수정!
+                          color: questTab == 0 ? primaryColor.withOpacity(0.08) : Colors.white,
                           border: Border.all(
-                            color: questTab == 0
-                                ? primaryColor
-                                : Colors.grey[300]!,
+                            color: questTab == 0 ? primaryColor : Colors.grey[300]!,
+                            width: questTab == 0 ? 4.0 : 1.0, 
                           ),
                           borderRadius: BorderRadius.circular(24),
+                          boxShadow: questTab == 0
+                              ? [
+                                  BoxShadow(
+                                    color: primaryColor.withOpacity(0.3),
+                                    blurRadius: 12,
+                                    spreadRadius: 2, 
+                                    offset: const Offset(0, 4),
+                                  )
+                                ]
+                              : [],
                         ),
                         child: Center(
                           child: Text(
                             '메인 퀘스트',
                             style: TextStyle(
-                              color: questTab == 0
-                                  ? Colors.white
-                                  : Colors.black54,
-                              fontWeight: FontWeight.bold,
+                              color: questTab == 0 ? primaryColor : Colors.black54, // 💡 글씨도 메인 컬러로 확 띄게
+                              fontWeight: questTab == 0 ? FontWeight.w900 : FontWeight.bold, // 💡 폰트도 가장 두껍게
+                              fontSize: questTab == 0 ? 15 : 14,
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
                       onTap: () => ref.read(questTabProvider.notifier).set(1),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
                           color: questTab == 1 ? primaryColor : Colors.white,
                           border: Border.all(
-                            color: questTab == 1
-                                ? primaryColor
-                                : Colors.grey[300]!,
+                            color: questTab == 1 ? primaryColor : Colors.grey[300]!,
+                            width: 1.0, // 💡 서브 퀘스트는 평범하게 유지
                           ),
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -514,9 +526,7 @@ class HomeScreen extends ConsumerWidget {
                           child: Text(
                             '서브 퀘스트',
                             style: TextStyle(
-                              color: questTab == 1
-                                  ? Colors.white
-                                  : Colors.black54,
+                              color: questTab == 1 ? Colors.white : Colors.black54,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

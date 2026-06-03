@@ -92,6 +92,7 @@ class AiCompanyDetailScreen extends ConsumerWidget {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.grey[50],
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
@@ -101,7 +102,6 @@ class AiCompanyDetailScreen extends ConsumerWidget {
             style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.purple.withOpacity(0.12),
@@ -110,6 +110,17 @@ class AiCompanyDetailScreen extends ConsumerWidget {
             child: const Text('AI 추천',
                 style: TextStyle(fontSize: 12, color: Colors.purple, fontWeight: FontWeight.bold)),
           ),
+          // 스크랩 로고 추가
+          IconButton(
+            icon: const Icon(Icons.bookmark_border, color: Colors.black),
+            onPressed: () {
+              // 임시 스크랩 액션
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('AI 추천 기업을 스크랩했습니다')),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
@@ -133,16 +144,17 @@ class AiCompanyDetailScreen extends ConsumerWidget {
                       Container(
                         width: 56, height: 56,
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey[200]!),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(15),
                           child: logoAsset != null
-                              ? Padding(
-                                  padding: const EdgeInsets.all(7),
-                                  child: Image.asset(logoAsset, fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) => _logoFallback(primaryColor)),
+                              ? Image.asset(
+                                  logoAsset, 
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _logoFallback(primaryColor)
                                 )
                               : _logoFallback(primaryColor),
                         ),

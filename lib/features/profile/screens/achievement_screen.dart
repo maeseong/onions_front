@@ -33,6 +33,7 @@ class _AchievementScreenState extends ConsumerState<AchievementScreen> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
         title: const Text('업적 및 뱃지', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),

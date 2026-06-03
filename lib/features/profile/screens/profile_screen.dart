@@ -22,6 +22,7 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,

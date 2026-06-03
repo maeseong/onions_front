@@ -22,6 +22,7 @@ class ScheduleScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,
@@ -68,6 +69,20 @@ class ScheduleScreen extends ConsumerWidget {
     return eventMap[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
+  // D-Day에 따른 색상을 반환하는 공통 함수
+  Color _getEventColor(dynamic rawDDay, Color primaryColor) {
+    final int d = rawDDay is int ? rawDDay : int.tryParse(rawDDay?.toString() ?? '') ?? -1;
+    if (d >= 0 && d <= 9) {
+      return const Color(0xFFEF5350); // 0~9일: 빨간색
+    } else if (d >= 10 && d <= 20) {
+      return Colors.orange;           // 10~20일: 주황(노란)색
+    } else if (d >= 21) {
+      return primaryColor;            // 21일 이상: 메인 테마색(초록색)
+    } else {
+      return Colors.grey;             // 종료됨
+    }
+  }
+
   Widget _buildBody({
     required BuildContext context,
     required WidgetRef ref,
@@ -80,9 +95,19 @@ class ScheduleScreen extends ConsumerWidget {
     required bool isLoading,
   }) {
     final eventMap = _buildEventMap(schedules);
+    
+    // 선택된 날짜의 이벤트는 팝업용으로 사용
     final selectedEvents = selectedDay != null
         ? _getEventsForDay(selectedDay, eventMap)
         : [];
+
+    // 하단 리스트에 보여줄 '이번 달 전체 일정' (날짜순 정렬)
+    final monthSchedules = [...schedules]
+      ..sort((a, b) {
+        final dateA = a['scheduledDate'] ?? a['scheduled_date'] ?? '';
+        final dateB = b['scheduledDate'] ?? b['scheduled_date'] ?? '';
+        return dateA.toString().compareTo(dateB.toString());
+      });
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 32),
@@ -189,6 +214,32 @@ class ScheduleScreen extends ConsumerWidget {
                   },
                   eventLoader: (day) => _getEventsForDay(day, eventMap),
                   headerVisible: false,
+                  // 달력 점(마커)을 커스텀하여 D-Day 색상과 동일하게 표시
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, date, events) {
+                      if (events.isEmpty) return const SizedBox.shrink();
+                      return Positioned(
+                        bottom: 6,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          // 최대 4개까지만 점 표시
+                          children: events.take(4).map((event) {
+                            final eventData = event as Map; 
+                            final rawDDay = eventData['dday'] ?? eventData['dDay'] ?? eventData['d_day'];
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _getEventColor(rawDDay, primaryColor),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  ),
                   calendarStyle: CalendarStyle(
                     todayDecoration: BoxDecoration(
                       color: primaryColor.withOpacity(0.2),
@@ -196,10 +247,6 @@ class ScheduleScreen extends ConsumerWidget {
                     ),
                     selectedDecoration: BoxDecoration(
                       color: primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    markerDecoration: const BoxDecoration(
-                      color: Colors.redAccent,
                       shape: BoxShape.circle,
                     ),
                     outsideDaysVisible: false,
@@ -255,21 +302,28 @@ class ScheduleScreen extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (e, _) => const SizedBox.shrink(),
             data: (upcomingSchedules) {
-              if (upcomingSchedules.isEmpty) return const SizedBox.shrink();
+              final filteredUpcoming = upcomingSchedules.where((event) {
+                final rawDDay = event['dday'] ?? event['dDay'] ?? event['d_day'];
+                final int d = rawDDay is int ? rawDDay : int.tryParse(rawDDay?.toString() ?? '') ?? -1;
+                return d >= 0 && d <= 9; // 0~9일(빨간색) 일정만 표시
+              }).toList();
+
+              if (filteredUpcoming.isEmpty) return const SizedBox.shrink();
+
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '다가오는 일정 🚨',
+                      '다가오는 일정',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ...upcomingSchedules.map(
+                    ...filteredUpcoming.map(
                       (event) => _buildScheduleItem(
                         context: context,
                         ref: ref,
@@ -297,7 +351,7 @@ class ScheduleScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      '주요 일정',
+                      '이번 달 주요 일정',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -315,12 +369,12 @@ class ScheduleScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                selectedEvents.isEmpty
+                monthSchedules.isEmpty
                     ? const Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Center(
                           child: Text(
-                            '해당 날짜에 일정이 없습니다.',
+                            '이번 달 일정이 없습니다.',
                             style: TextStyle(color: Colors.grey),
                           ),
                         ),
@@ -328,9 +382,9 @@ class ScheduleScreen extends ConsumerWidget {
                     : ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: selectedEvents.length,
+                        itemCount: monthSchedules.length,
                         itemBuilder: (context, index) {
-                          final event = selectedEvents[index];
+                          final event = monthSchedules[index];
                           return _buildScheduleItem(
                             context: context,
                             ref: ref,
@@ -687,9 +741,12 @@ class ScheduleScreen extends ConsumerWidget {
     required dynamic scheduleId,
     required String yearMonth,
   }) {
-    final dDay = _formatDDay(rawDDay);
+    final primaryColor = Theme.of(context).primaryColor;
+    final dDayText = _formatDDay(rawDDay);
     final typeLabel = _typeToKorean(type);
-    const typeColor = Color(0xFFEF5350);
+    
+    // 공통 함수 _getEventColor를 재사용하여 색상 적용
+    final itemColor = _getEventColor(rawDDay, primaryColor);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -709,9 +766,9 @@ class ScheduleScreen extends ConsumerWidget {
           Container(
             width: 6,
             height: 84,
-            decoration: const BoxDecoration(
-              color: typeColor,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: itemColor, // 동적 색상 적용
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
               ),
@@ -773,13 +830,13 @@ class ScheduleScreen extends ConsumerWidget {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: typeColor.withOpacity(0.1),
+                                color: itemColor.withOpacity(0.1), // 동적 색상 적용
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 typeLabel,
-                                style: const TextStyle(
-                                  color: typeColor,
+                                style: TextStyle(
+                                  color: itemColor, // 동적 색상 적용
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -807,12 +864,12 @@ class ScheduleScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: typeColor.withOpacity(0.5)),
+                      border: Border.all(color: itemColor.withOpacity(0.5)), // 동적 색상 적용
                     ),
                     child: Text(
-                      dDay,
-                      style: const TextStyle(
-                        color: typeColor,
+                      dDayText,
+                      style: TextStyle(
+                        color: itemColor, // 동적 색상 적용
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),

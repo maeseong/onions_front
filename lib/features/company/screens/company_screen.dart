@@ -34,7 +34,7 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FA),
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent, // 💡 스크롤 시 앱바 색상 변하는 현상 방지
         elevation: 0,
         titleSpacing: 20.0,
         centerTitle: false,
@@ -189,6 +189,18 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
     Color primaryColor,
   ) {
     final matchRate = company['matchRate'] ?? company['match_rate'] ?? 0;
+    
+    // 💡 매칭률(%)에 따라 뱃지 색상을 결정하는 로직 추가
+    final int rateValue = int.tryParse(matchRate.toString()) ?? 0;
+    Color badgeColor;
+    if (rateValue >= 70) {
+      badgeColor = primaryColor; // 70% 이상은 메인 컬러(초록색)
+    } else if (rateValue >= 40) {
+      badgeColor = Colors.orange; // 40% ~ 69%는 주황색(노란색 계열)
+    } else {
+      badgeColor = Colors.red; // 39% 이하는 빨간색
+    }
+
     final reasons = _asStringList(
       company['recommendationReasons'] ?? company['recommendation_reasons'],
     );
@@ -220,7 +232,7 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
                     companyType: cType,
                     industry: company['industry'] ?? '',
                     region: company['region'] ?? '',
-                    matchRate: (company['matchRate'] ?? 0) as int,
+                    matchRate: rateValue,
                     reasons: _asStringList(company['recommendationReasons'] ?? company['recommendation_reasons']),
                     careerUrl: careerUrl,
                   ),
@@ -260,14 +272,14 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.white, // 💡 배경을 흰색으로 변경
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: Colors.grey[200]!), // 💡 테두리 추가
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(11),
                     child: logoAsset != null
-                        ? Image.asset(
+                        ? Image.asset( // 💡 Padding 제거하고 꽉 차게 설정
                             logoAsset,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
@@ -325,19 +337,20 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
                     ],
                   ),
                 ),
+                // 💡 매칭률(%) 뱃지 영역 - 계산된 badgeColor를 사용
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: badgeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '$matchRate%',
                     style: TextStyle(
-                      color: primaryColor,
+                      color: badgeColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
