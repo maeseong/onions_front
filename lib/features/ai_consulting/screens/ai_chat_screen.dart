@@ -7,7 +7,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/foundation.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
-  const AiChatScreen({super.key});
+  final Map<String, dynamic> tempSpec;
+  const AiChatScreen({super.key, required this.tempSpec});
 
   @override
   ConsumerState<AiChatScreen> createState() => _AiChatScreenState();
@@ -26,19 +27,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Map<String, dynamic>? _gapResult;        
   Map<String, dynamic>? _simulateResult;   
 
-  double _simGpa = 3.8;
-  double _simToeic = 820;
+  double _simGpa = 0.0;
+  double _simToeic = 0;
   int _simInternship = 0;
   int _simContest = 0;
-  
-  // 상태 변수 추가
+
   String? _simulationCompany;
+  int _simCert = 0;
+  int _simProject = 0;
   // bool _waitingForCompany = false;
   // int _pendingTab = -1;
 
   @override
   void initState() {
     super.initState();
+    final spec = widget.tempSpec;
+    _simGpa = (spec['gpa'] as num?)?.toDouble() ?? 0.0;
+    _simToeic = ((spec['toeicScore'] ?? spec['toeic_score']) as num?)?.toDouble() ?? 0;
+    _simCert = ((spec['certificateCount'] ?? spec['certificate_count']) as num?)?.toInt() ?? 0;
+    _simProject = ((spec['projectCount'] ?? spec['project_count']) as num?)?.toInt() ?? 0;
+    _simInternship = ((spec['internshipCount'] ?? spec['internship_count']) as num?)?.toInt() ?? 0;
     _addBotMessage('반가워요! 입력하신 스펙을 바탕으로 진단을 시작할까요? 목표하시는 기업군이 있나요?');
   }
 
@@ -87,37 +95,82 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     if (tab == 2) await _showSimulation();
   }
 
-  // 1. 스펙 분석 
+  // 1. 스펙 분석
   Future<void> _runSpecAnalysis() async {
     _addUserMessage('스펙 분석');
     setState(() {
       _isLoading = true;
-      _analysisResult = null; // 기존 결과 초기화
+      _analysisResult = null;
     });
 
     String botText = '';
-    Map<String, dynamic>? cardData;
 
     try {
-      await for (final event in ref.read(aiRepositoryProvider).analyzeSpec('현재 스펙을 분석해줘')) {
+      final spec = widget.tempSpec;
+      final specText = spec.isEmpty ? '' :
+          ' (분석 기준 스펙 - 학점 ${spec['gpa']}, 토익 ${spec['toeicScore'] ?? spec['toeic_score']}, '
+          '자격증 ${spec['certificateCount'] ?? spec['certificate_count']}개, '
+          '인턴 ${spec['internshipCount'] ?? spec['internship_count']}회, '
+          '기술스택 ${(spec['techStack'] ?? spec['tech_stack'] ?? '').toString().isNotEmpty ? spec['techStack'] ?? spec['tech_stack'] : '없음'})';
+
+      await for (final event in ref.read(aiRepositoryProvider).analyzeSpec('현재 스펙을 분석해줘$specText')) {
         final type = event['type'] as String?;
         if (type == 'text') {
           botText += (event['content'] as String? ?? '');
-          setState(() {}); // 글자가 한 글자씩 쳐지는 효과
-        } else if (type == 'result_card' || type == 'resultCard') {
-          cardData = event['data'] as Map<String, dynamic>?;
+          setState(() {});
         }
       }
+
+      // tempSpec으로 레이더 데이터 구성
+      final double gpa = (spec['gpa'] as num?)?.toDouble() ?? 0.0;
+      final double toeic = ((spec['toeicScore'] ?? spec['toeic_score']) as num?)?.toDouble() ?? 0;
+      final int cert = ((spec['certificateCount'] ?? spec['certificate_count']) as num?)?.toInt() ?? 0;
+      final int intern = ((spec['internshipCount'] ?? spec['internship_count']) as num?)?.toInt() ?? 0;
+      final int project = ((spec['projectCount'] ?? spec['project_count']) as num?)?.toInt() ?? 0;
+
+      final radar = {
+        '학점': (gpa / 4.5 * 100).clamp(0, 100).toDouble(),
+        '어학': (toeic / 990 * 100).clamp(0, 100).toDouble(),
+        '자격증': (cert / 5 * 100).clamp(0, 100).toDouble(),
+        '인턴': (intern / 3 * 100).clamp(0, 100).toDouble(),
+        '프로젝트': (project / 5 * 100).clamp(0, 100).toDouble(),
+      };
+
+      // AI 텍스트에서 강점 / 보완 / 조언 섹션 파싱
+      final strengths = _parseSection(botText, ['✅ 강점', '강점']);
+      final weaknesses = _parseSection(botText, ['⚠️ 보완 필요', '보완 필요', '약점']);
+      final advice = _parseSection(botText, ['🎯 핵심 조언', '핵심 조언', '조언']);
+
       setState(() {
         _isLoading = false;
-        _analysisResult = cardData;
+        _analysisResult = {
+          'radar': radar,
+          'strengths': strengths,
+          'weaknesses': [...weaknesses, ...advice],
+        };
       });
-      if (botText.isNotEmpty) _addBotMessage(botText);
+
     } catch (e) {
-      // 에러 발생 시 명확하게 실패를 알림
       setState(() => _isLoading = false);
       _addBotMessage('스펙 분석 중 통신 오류가 발생했어요. 백엔드 서버 상태를 확인한 후 다시 시도해 주세요.\n(에러: $e)');
     }
+  }
+
+  // 마크다운 섹션에서 bullet 항목 추출
+  List<String> _parseSection(String text, List<String> headings) {
+    for (final heading in headings) {
+      final pattern = RegExp('(?:###?\\s*)?(?:[^\\w]*)$heading[^\\n]*\\n((?:[-•*]\\s*.+\\n?)+)', multiLine: true);
+      final match = pattern.firstMatch(text);
+      if (match != null) {
+        return match.group(1)!
+            .split('\n')
+            .map((l) => l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim())
+            .map((l) => l.replaceAll('**', ''))  // ** 마크다운 제거
+            .where((l) => l.isNotEmpty)
+            .toList();
+      }
+    }
+    return [];
   }
 
   Future<String?> _askCompanyName() async {
@@ -190,9 +243,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       _isLoading = true;
       _simulateResult = null;
     });
-    debugPrint('[시뮬] gpa: $_simGpa, toeic: $_simToeic, intern: $_simInternship, contest: $_simContest');
-    debugPrint('[시뮬] company: $_simulationCompany');
-    debugPrint('[시뮬레이션] companyName: $_simulationCompany');
     String botText = '';
     try {
       await for (final event in ref.read(aiRepositoryProvider).simulateStream(
@@ -200,7 +250,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'gpa': _simGpa,
           'toeic_score': _simToeic.round(),
           'internship_count': _simInternship,
-          'contest_count': _simContest,
+          'certificate_count': _simCert,
+          'project_count': _simProject,
         },
         companyName: _simulationCompany,
       )) {
@@ -209,8 +260,25 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           botText += content;
         }
       }
-      setState(() => _isLoading = false);
-      if (botText.isNotEmpty) _addBotMessage(botText);
+
+      // AI 텍스트에서 합격 가능성 퍼센트 파싱
+      final matches = RegExp(r'(\d+)%').allMatches(botText).toList();
+      final before = matches.isNotEmpty ? int.tryParse(matches[0].group(1)!) ?? 0 : 0;
+      final after = matches.length > 1 ? int.tryParse(matches[1].group(1)!) ?? 0 : 0;
+
+      setState(() {
+        _isLoading = false;
+        _simulateResult = {
+          'before': before,
+          'after': after,
+          'botText': botText,
+          'gpa': _simGpa,
+          'toeic': _simToeic,
+          'cert': _simCert,
+          'project': _simProject,
+          'intern': _simInternship,
+        };
+      });
     } catch (e) {
       setState(() => _isLoading = false);
       _addBotMessage('시뮬레이션 실행에 실패했어요.\n(에러: $e)');
@@ -270,6 +338,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 if (_activeTab == 0 && _analysisResult != null) _buildSpecAnalysisCard(),
                 if (_activeTab == 1 && _gapResult != null) _buildGapCard(),
                 if (_activeTab == 2 && _simulationCompany != null) _buildSimulationCard(),
+                if (_activeTab == 2 && _simulateResult != null) _buildSimulationResultCard(),
                 const SizedBox(height: 12),
               ],
             ),
@@ -374,7 +443,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         tickCount: 4,
         ticksTextStyle: const TextStyle(fontSize: 0),
         gridBorderData: BorderSide(color: Colors.grey[200]!, width: 1),
-        radarBorderData: BorderSide(color: Colors.grey[300]!, width: 1),
+        radarBorderData: const BorderSide(color: Colors.transparent, width: 0),
+        borderData: FlBorderData(show: false),
         titleTextStyle: const TextStyle(color: Colors.black54, fontSize: 12),
         titlePositionPercentageOffset: 0.2,
         getTitle: (index, angle) => RadarChartTitle(text: labels[index]),
@@ -425,7 +495,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget _buildGapCard() {
     final data = _gapResult!;
     final items = (data['items'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
-    final advice = data['advice'] as String? ?? '';
+    final advice = data['advice'] is String 
+      ? data['advice'] as String 
+      : (data['advice'] as List?)?.join(', ') ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -564,9 +636,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           const SizedBox(height: 16),
           _buildSlider('학점', _simGpa, 0, 4.5, (v) => setState(() => _simGpa = v), decimals: 1),
           _buildSlider('어학', _simToeic, 0, 990, (v) => setState(() => _simToeic = v)),
-          _buildCounter('자격증', '정보처리기사'),
+          _buildStepper('자격증', _simCert, (v) => setState(() => _simCert = v)),
+          _buildStepper('프로젝트', _simProject, (v) => setState(() => _simProject = v)),
           _buildStepper('인턴십', _simInternship, (v) => setState(() => _simInternship = v)),
-          _buildStepper('공모전', _simContest, (v) => setState(() => _simContest = v)),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -582,20 +654,183 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               child: const Text('이 스펙으로 시뮬레이션하기', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
-          if (_simulateResult != null) ...[
-            const SizedBox(height: 16),
-            const Text('시뮬레이션 결과', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: _buildResultRateCard('카카오', _simulateResult!['kakao'] ?? 0)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildResultRateCard('네이버', _simulateResult!['naver'] ?? 0)),
-            ]),
-            if (_simulateResult!['message'] != null) ...[
-              const SizedBox(height: 10),
-              Text(_simulateResult!['message'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimulationResultCard() {
+    final data = _simulateResult!;
+    final int before = data['before'] as int? ?? 0;
+    final int after = data['after'] as int? ?? 0;
+    final double gpa = (data['gpa'] as num?)?.toDouble() ?? 0;
+    final double toeic = (data['toeic'] as num?)?.toDouble() ?? 0;
+    final int cert = data['cert'] as int? ?? 0;
+    final int project = data['project'] as int? ?? 0;
+    final int intern = data['intern'] as int? ?? 0;
+    final String botText = data['botText'] as String? ?? '';
+    final bool improved = after > before;
+    final Color afterColor = improved ? _primaryColor : Colors.redAccent;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            decoration: BoxDecoration(
+              color: _primaryColor.withOpacity(0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Row(
+              children: [
+                const Text('🔮', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Text(
+                  '시뮬레이션 결과 · ${_simulationCompany ?? ''}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 합격 가능성 게이지
+                if (before > 0 || after > 0) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildGauge('현재', before, Colors.grey),
+                      Column(
+                        children: [
+                          Icon(
+                            improved ? Icons.arrow_forward : Icons.arrow_forward,
+                            color: improved ? _primaryColor : Colors.redAccent,
+                            size: 28,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            improved ? '+${after - before}%' : '${after - before}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: improved ? _primaryColor : Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      _buildGauge('변경 후', after, afterColor),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                ],
+
+                // 스펙 바
+                const Text('변경된 스펙', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 12),
+                _buildSpecBar('학점', gpa, 4.5, '${gpa.toStringAsFixed(1)} / 4.5'),
+                _buildSpecBar('토익', toeic, 990, '${toeic.round()} / 990'),
+                _buildSpecBar('자격증', cert.toDouble(), 5, '$cert개', maxLabel: '5+'),
+                _buildSpecBar('프로젝트', project.toDouble(), 5, '$project개', maxLabel: '5+'),
+                _buildSpecBar('인턴십', intern.toDouble(), 3, '$intern회', maxLabel: '3+'),
+
+                // AI 분석 텍스트
+                if (botText.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  const Text('💡 AI 분석', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  MarkdownBody(
+                    data: botText,
+                    softLineBreak: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(color: Colors.black87, fontSize: 13),
+                      h2: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      h3: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      listBullet: const TextStyle(color: Colors.black87, fontSize: 13),
+                      tableBody: const TextStyle(fontSize: 12),
+                      tableHead: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGauge(String label, int percent, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 90,
+          height: 90,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 90,
+                height: 90,
+                child: CircularProgressIndicator(
+                  value: (percent / 100).clamp(0.0, 1.0),
+                  strokeWidth: 9,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+              Text(
+                '$percent%',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+              ),
             ],
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpecBar(String label, double value, double max, String displayValue, {String? maxLabel}) {
+    final ratio = (value / max).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              Text(displayValue, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _primaryColor)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 10,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
+          ),
         ],
       ),
     );
