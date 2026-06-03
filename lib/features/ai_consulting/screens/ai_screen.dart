@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../profile/repositories/profile_repository.dart';
 import '../../home/providers/home_provider.dart';
+import '../../../shared/widgets/tech_stack_selector.dart';
 import 'ai_chat_screen.dart';
 
-class AiScreen extends ConsumerWidget {
+class AiScreen extends ConsumerStatefulWidget {
   const AiScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AiScreen> createState() => _AiScreenState();
+}
+
+class _AiScreenState extends ConsumerState<AiScreen> {
+  Map<String, dynamic> _tempSpec = {};
+  bool _tempSpecSet = false;
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    
-    // 온보딩에서 입력한 사용자의 실제 상세 스펙이 들어있는 프로필 프로바이더를 구독
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
@@ -28,7 +34,19 @@ class AiScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Center(child: Text('스펙 정보를 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54))),
         data: (profile) {
-          final spec = profile['spec'] ?? {};
+          final dbSpec = profile['spec'] ?? {};
+
+          // 처음 프로필 로드 시 _tempSpec 초기화 (한 번만)
+          if (!_tempSpecSet) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() {
+                _tempSpec = Map<String, dynamic>.from(dbSpec);
+                _tempSpecSet = true;
+              });
+            });
+          }
+
+          final spec = _tempSpec.isNotEmpty ? _tempSpec : dbSpec;
           final String userName = profile['name'] ?? profile['user_name'] ?? '사용자';
 
           final double gpa = (spec['gpa'] as num?)?.toDouble() ?? 0.0;
@@ -60,7 +78,7 @@ class AiScreen extends ConsumerWidget {
                         children: [
                           const Text('나의 스펙', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           GestureDetector(
-                            onTap: () => _showEditSpecDialog(context, ref, spec, primaryColor),
+                            onTap: () => _showEditSpecDialog(context, spec, primaryColor),
                             child: Text(
                               '스펙 수정', 
                               style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14)
@@ -99,7 +117,7 @@ class AiScreen extends ConsumerWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AiChatScreen()),
+                        MaterialPageRoute(builder: (_) => AiChatScreen(tempSpec: _tempSpec)),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -118,69 +136,105 @@ class AiScreen extends ConsumerWidget {
     );
   }
 
-  // 스펙 수정 모달 바텀 시트
-  void _showEditSpecDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> currentSpec, Color primaryColor) {
+  // 스펙 수정 모달 바텀 시트 (세션 중에만 적용 — DB 저장 없음)
+  void _showEditSpecDialog(BuildContext context, Map<String, dynamic> currentSpec, Color primaryColor) {
     final gpaCtrl = TextEditingController(text: currentSpec['gpa']?.toString() ?? '');
     final toeicCtrl = TextEditingController(text: (currentSpec['toeicScore'] ?? currentSpec['toeic_score'])?.toString() ?? '');
     final certCtrl = TextEditingController(text: (currentSpec['certificateCount'] ?? currentSpec['certificate_count'])?.toString() ?? '');
     final internCtrl = TextEditingController(text: (currentSpec['internshipCount'] ?? currentSpec['internship_count'])?.toString() ?? '');
+    final currentTechStack = (currentSpec['techStack'] ?? currentSpec['tech_stack'] ?? '').toString();
+    List<String> selectedTechStacks = currentTechStack.isEmpty
+        ? []
+        : currentTechStack.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('내 스펙 수정하기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              _buildEditField('학점 (GPA)', gpaCtrl, TextInputType.number),
-              _buildEditField('토익 점수', toeicCtrl, TextInputType.number),
-              _buildEditField('자격증 개수', certCtrl, TextInputType.number),
-              _buildEditField('인턴십 경험 횟수', internCtrl, TextInputType.number),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity, height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor, 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), 
-                    elevation: 0
-                  ),
-                  onPressed: () async {
-                    try {
-                      final repository = ref.read(profileRepositoryProvider);
-                      
-                      // 백엔드 명세대로 데이터 구조 패치
-                      await repository.updateSpec({
-                        'gpa': double.tryParse(gpaCtrl.text) ?? 0.0,
-                        'toeicScore': int.tryParse(toeicCtrl.text) ?? 0,
-                        'certificateCount': int.tryParse(certCtrl.text) ?? 0,
-                        'internshipCount': int.tryParse(internCtrl.text) ?? 0,
-                      });
-                      
-                      // 수동으로 프로필과 홈 화면의 캐시 데이터를 무효화하여 화면을 즉시 동기화
-                      ref.invalidate(profileProvider);
-                      ref.invalidate(growthProvider); 
-
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('스펙이 성공적으로 수정되었습니다! 🌱')));
-                      }
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('스펙 수정에 실패했어요.')));
-                    }
-                  },
-                  child: const Text('수정 완료', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              maxChildSize: 0.95,
+              minChildSize: 0.5,
+              expand: false,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 8, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('내 스펙 수정하기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.black54),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: EdgeInsets.only(
+                          left: 24, right: 24, top: 20,
+                          bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildEditField('학점 (GPA)', gpaCtrl, TextInputType.number),
+                            _buildEditField('토익 점수', toeicCtrl, TextInputType.number),
+                            _buildEditField('자격증 개수', certCtrl, TextInputType.number),
+                            _buildEditField('인턴십 경험 횟수', internCtrl, TextInputType.number),
+                            const SizedBox(height: 8),
+                            TechStackSelector(
+                              selected: selectedTechStacks,
+                              onChanged: (list) => setModalState(() => selectedTechStacks = list),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity, height: 56,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  elevation: 0,
+                                ),
+                                onPressed: () {
+                                  // DB 저장 없이 로컬 상태(_tempSpec)만 업데이트
+                                  setState(() {
+                                    _tempSpec = {
+                                      ..._tempSpec,
+                                      'gpa': double.tryParse(gpaCtrl.text) ?? currentSpec['gpa'] ?? 0.0,
+                                      'toeicScore': int.tryParse(toeicCtrl.text) ?? currentSpec['toeicScore'] ?? 0,
+                                      'certificateCount': int.tryParse(certCtrl.text) ?? currentSpec['certificateCount'] ?? 0,
+                                      'internshipCount': int.tryParse(internCtrl.text) ?? currentSpec['internshipCount'] ?? 0,
+                                      'techStack': selectedTechStacks.join(', '),
+                                    };
+                                  });
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('스펙이 이 세션에만 임시 적용됩니다.')),
+                                  );
+                                },
+                                child: const Text('적용하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );
