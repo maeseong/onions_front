@@ -23,9 +23,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   int _activeTab = 0;
   bool _isLoading = false;
 
-  Map<String, dynamic>? _analysisResult;   
-  Map<String, dynamic>? _gapResult;        
-  Map<String, dynamic>? _simulateResult;   
+  Map<String, dynamic>? _analysisResult;
+  Map<String, dynamic>? _gapResult;
+  Map<String, dynamic>? _simulateResult;
+
+  bool _gapAdviceExpanded = false;
 
   double _simGpa = 0.0;
   double _simToeic = 0;
@@ -80,15 +82,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _onTabTap(int tab) async {
-    if (_activeTab == tab) {
-      // 같은 탭 클릭하면 닫기
-      setState(() {
-        _activeTab = -1;
-        _gapResult = null;
-        _simulateResult = null;
-      });
-      return;
-    }
+    if (_isLoading) return;
     setState(() => _activeTab = tab);
     if (tab == 0) await _runSpecAnalysis();
     if (tab == 1) await _runGapAnalysis();
@@ -97,7 +91,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   // 1. 스펙 분석
   Future<void> _runSpecAnalysis() async {
-    _addUserMessage('스펙 분석');
+    final isRerun = _messages.any((m) => m.cardType == _CardType.specAnalysis);
+    if (!isRerun) _addUserMessage('스펙 분석');
     setState(() {
       _isLoading = true;
       _analysisResult = null;
@@ -141,6 +136,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       final weaknesses = _parseSection(botText, ['⚠️ 보완 필요', '보완 필요', '약점']);
       final advice = _parseSection(botText, ['🎯 핵심 조언', '핵심 조언', '조언']);
 
+      final alreadyHasCard = _messages.any((m) => m.cardType == _CardType.specAnalysis);
       setState(() {
         _isLoading = false;
         _analysisResult = {
@@ -148,6 +144,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'strengths': strengths,
           'weaknesses': [...weaknesses, ...advice],
         };
+        if (!alreadyHasCard) {
+          _messages.add(_ChatMessage(text: '', isUser: false, cardType: _CardType.specAnalysis));
+        }
       });
 
     } catch (e) {
@@ -207,7 +206,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final companyName = await _askCompanyName();
     if (companyName == null || companyName.isEmpty) return;
 
-    _addUserMessage('갭 분석 - $companyName');
+    final isRerun = _messages.any((m) => m.cardType == _CardType.gap);
+    if (!isRerun) _addUserMessage('갭 분석 - $companyName');
     setState(() {
       _isLoading = true;
       _gapResult = null;
@@ -215,11 +215,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
     try {
       final res = await ref.read(aiRepositoryProvider).gapAnalysis(companyName: companyName);
+      final alreadyHasCard = _messages.any((m) => m.cardType == _CardType.gap);
       setState(() {
         _isLoading = false;
         _gapResult = res;
+        _gapAdviceExpanded = false;
+        if (!alreadyHasCard) {
+          _messages.add(_ChatMessage(text: '$companyName 기업과의 갭 분석 결과예요!', isUser: false));
+          _messages.add(_ChatMessage(text: '', isUser: false, cardType: _CardType.gap));
+        }
       });
-      _addBotMessage('$companyName 기업과의 갭 분석 결과예요!');
     } catch (e) {
       setState(() => _isLoading = false);
       _addBotMessage('갭 분석 중 오류가 발생했어요.\n(에러: $e)');
@@ -278,6 +283,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'project': _simProject,
           'intern': _simInternship,
         };
+        _messages.add(_ChatMessage(text: '', isUser: false, cardType: _CardType.simulation));
       });
     } catch (e) {
       setState(() => _isLoading = false);
@@ -335,10 +341,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               children: [
                 ..._messages.map(_buildChatBubble),
                 if (_isLoading) _buildTypingIndicator(),
-                if (_activeTab == 0 && _analysisResult != null) _buildSpecAnalysisCard(),
-                if (_activeTab == 1 && _gapResult != null) _buildGapCard(),
-                if (_activeTab == 2 && _simulationCompany != null) _buildSimulationCard(),
-                if (_activeTab == 2 && _simulateResult != null) _buildSimulationResultCard(),
+                if (_activeTab == 2 && _simulationCompany != null && _simulateResult == null) _buildSimulationCard(),
                 const SizedBox(height: 12),
               ],
             ),
@@ -350,6 +353,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Widget _buildChatBubble(_ChatMessage msg) {
+    // 카드 타입 메시지는 해당 카드 위젯으로 렌더링
+    if (msg.cardType == _CardType.specAnalysis && _analysisResult != null) {
+      return _buildSpecAnalysisCard();
+    }
+    if (msg.cardType == _CardType.gap && _gapResult != null) {
+      return _buildGapCard();
+    }
+    if (msg.cardType == _CardType.simulation && _simulateResult != null) {
+      return _buildSimulationResultCard();
+    }
+
     final isUser = msg.isUser;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -443,6 +457,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         tickCount: 4,
         ticksTextStyle: const TextStyle(fontSize: 0),
         gridBorderData: BorderSide(color: Colors.grey[200]!, width: 1),
+        tickBorderData: BorderSide(color: Colors.grey[200]!, width: 1),
         radarBorderData: const BorderSide(color: Colors.transparent, width: 0),
         borderData: FlBorderData(show: false),
         titleTextStyle: const TextStyle(color: Colors.black54, fontSize: 12),
@@ -462,6 +477,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Widget _buildResultSection(String title, List<String> items, {required bool isStrength}) {
+    final color = isStrength ? _primaryColor : Colors.orange;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -472,21 +488,43 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(isStrength ? Icons.trending_up : Icons.info_outline,
-                color: isStrength ? _primaryColor : Colors.orange, size: 18),
+            Icon(isStrength ? Icons.trending_up : Icons.info_outline, color: color, size: 18),
             const SizedBox(width: 6),
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isStrength ? _primaryColor : Colors.orange)),
+            Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: color, letterSpacing: 0.3)),
           ]),
-          const SizedBox(height: 8),
-          ...items.map((s) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(isStrength ? Icons.check : Icons.priority_high,
-                  size: 14, color: isStrength ? _primaryColor : Colors.orange),
-              const SizedBox(width: 6),
-              Flexible(child: Text(s, style: const TextStyle(fontSize: 13, color: Colors.black87))),
-            ]),
-          )),
+          const SizedBox(height: 10),
+          ...items.map((s) {
+            // "항목명: 설명" 형태면 항목명을 굵게 분리
+            final colonIdx = s.indexOf(':');
+            final hasColon = colonIdx > 0 && colonIdx < s.length - 1;
+            final label = hasColon ? s.substring(0, colonIdx).trim() : null;
+            final desc  = hasColon ? s.substring(colonIdx + 1).trim() : s;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Icon(isStrength ? Icons.check_circle_outline : Icons.error_outline,
+                      size: 15, color: color),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                      children: [
+                        if (label != null) ...[
+                          TextSpan(text: '$label  ', style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+                        ],
+                        TextSpan(text: desc),
+                      ],
+                    ),
+                  ),
+                ),
+              ]),
+            );
+          }),
         ],
       ),
     );
@@ -569,10 +607,92 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           }),
           if (advice.isNotEmpty) ...[
             const Divider(),
+            const SizedBox(height: 10),
+            const Text('💡 핵심 조언', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
             const SizedBox(height: 8),
-            const Text('💡 핵심 조언', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(advice, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ...() {
+              final allLines = advice.split('\n')
+                  .map((l) => l.trim())
+                  .map((l) => l.replaceAll(RegExp(r'^[①②③④⑤]\s*[-]?\s*'), '').trim())
+                  .map((l) => l.replaceAll(RegExp(r'^[-•]\s*'), '').trim())
+                  .where((l) => l.isNotEmpty)
+                  .toList();
+
+              // 앞 3줄은 핵심 조언, 나머지는 더보기
+              final coreLines = allLines.take(3).toList();
+              final extraLines = allLines.skip(3).toList();
+
+              Widget buildLine(String line) {
+                final colonIdx = line.indexOf(':');
+                final hasColon = colonIdx > 0;
+                final label = hasColon ? line.substring(0, colonIdx).trim() : null;
+                final desc  = hasColon ? line.substring(colonIdx + 1).trim() : line;
+
+                // 설명 없이 레이블만 있으면 소제목으로 렌더링
+                if (label != null && desc.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.amber[800],
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Icon(Icons.lightbulb_outline, size: 15, color: Colors.amber[700]),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                            children: [
+                              if (label != null)
+                                TextSpan(text: '$label  ', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber[800])),
+                              TextSpan(text: desc),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return [
+                ...coreLines.map(buildLine),
+                if (extraLines.isNotEmpty) ...[
+                  GestureDetector(
+                    onTap: () => setState(() => _gapAdviceExpanded = !_gapAdviceExpanded),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Row(children: [
+                        Text(
+                          _gapAdviceExpanded ? '접기' : '더보기 (${extraLines.length}개)',
+                          style: TextStyle(fontSize: 12, color: _primaryColor, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(_gapAdviceExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            size: 16, color: _primaryColor),
+                      ]),
+                    ),
+                  ),
+                  if (_gapAdviceExpanded) ...extraLines.map(buildLine),
+                ],
+              ];
+            }(),
           ],
           const SizedBox(height: 8),
           Row(children: [
@@ -957,10 +1077,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   static const _smallGrey = TextStyle(fontSize: 11, color: Colors.black38);
 }
 
+enum _CardType { specAnalysis, gap, simulation }
+
 class _ChatMessage {
   final String text;
   final bool isUser;
-  _ChatMessage({required this.text, required this.isUser});
+  final _CardType? cardType;
+  _ChatMessage({required this.text, required this.isUser, this.cardType});
 }
 
 class _DotsIndicator extends StatefulWidget {
