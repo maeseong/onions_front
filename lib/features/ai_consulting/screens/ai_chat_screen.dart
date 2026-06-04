@@ -38,6 +38,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   int _simCert = 0;
   int _simProject = 0;
 
+  // 시뮬레이션 비교용 원본 스펙
+  double _origGpa = 0.0;
+  double _origToeic = 0;
+  int _origCert = 0;
+  int _origProject = 0;
+  int _origInternship = 0;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +54,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _simCert = ((spec['certificateCount'] ?? spec['certificate_count']) as num?)?.toInt() ?? 0;
     _simProject = ((spec['projectCount'] ?? spec['project_count']) as num?)?.toInt() ?? 0;
     _simInternship = ((spec['internshipCount'] ?? spec['internship_count']) as num?)?.toInt() ?? 0;
+
+    // 원본 스펙 저장
+    _origGpa = _simGpa;
+    _origToeic = _simToeic;
+    _origCert = _simCert;
+    _origProject = _simProject;
+    _origInternship = _simInternship;
     _addBotMessage('반가워요! 입력하신 스펙을 바탕으로 진단을 시작할까요? 목표하시는 기업군이 있나요?');
   }
 
@@ -324,12 +338,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'before': before,
           'after': after,
           'botText': botText,
+          // 시뮬레이션 후 값
           'gpa': _simGpa,
           'toeic': _simToeic,
           'cert': _simCert,
           'project': _simProject,
           'intern': _simInternship,
+          // 원본 스펙 값 (비교용)
+          'origGpa': _origGpa,
+          'origToeic': _origToeic,
+          'origCert': _origCert,
+          'origProject': _origProject,
+          'origInternship': _origInternship,
         };
+        _messages.removeWhere((m) => m.cardType == _CardType.simulation);
         _messages.add(_ChatMessage(text: '', isUser: false, cardType: _CardType.simulation));
       });
     } catch (e) {
@@ -834,101 +856,157 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final int project = data['project'] as int? ?? 0;
     final int intern = data['intern'] as int? ?? 0;
     final String botText = data['botText'] as String? ?? '';
-    final bool improved = after > before;
-    final Color afterColor = improved ? _primaryColor : Colors.redAccent;
+    final int diff = after - before;
+    final bool improved = diff > 0;
+    final bool same = diff == 0;
+
+    // 스펙 항목 정의: (label, icon, 변경 전, 변경 후, max, 단위)
+    // 원본 스펙 (비교 기준)
+    final double origGpa = (data['origGpa'] as num?)?.toDouble() ?? gpa;
+    final double origToeic = (data['origToeic'] as num?)?.toDouble() ?? toeic;
+    final int origCert = data['origCert'] as int? ?? cert;
+    final int origProject = data['origProject'] as int? ?? project;
+    final int origInternship = data['origInternship'] as int? ?? intern;
+
+    final specs = [
+      ('학점', '🎓', origGpa, gpa, 4.5, '/4.5'),
+      ('토익', '🌐', origToeic, toeic, 990.0, '점'),
+      ('자격증', '📜', origCert.toDouble(), cert.toDouble(), 5.0, '개'),
+      ('프로젝트', '💻', origProject.toDouble(), project.toDouble(), 5.0, '개'),
+      ('인턴십', '💼', origInternship.toDouble(), intern.toDouble(), 3.0, '회'),
+    ];
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 헤더
+          // ── 헤더 ──
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
             decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              color: _primaryColor.withOpacity(0.07),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Row(
               children: [
                 const Text('🔮', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 8),
-                Text(
-                  '시뮬레이션 결과 · ${_simulationCompany ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                Expanded(
+                  child: Text(
+                    '${_simulationCompany ?? ''} 합격 가능성 시뮬레이션',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
               ],
             ),
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 합격 가능성 게이지
-                if (before > 0 || after > 0) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+
+                // ── 합격률 Before/After 바 ──
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
                     children: [
-                      _buildGauge('현재', before, Colors.grey),
-                      Column(
-                        children: [
-                          Icon(
-                            improved ? Icons.arrow_forward : Icons.arrow_forward,
-                            color: improved ? _primaryColor : Colors.redAccent,
-                            size: 28,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            improved ? '+${after - before}%' : '${after - before}%',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: improved ? _primaryColor : Colors.redAccent,
-                            ),
-                          ),
-                        ],
+                      // Before
+                      _buildRateBar('현재', before, Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      // After
+                      _buildRateBar(
+                        '변경 후',
+                        after,
+                        same ? Colors.grey.shade400 : (improved ? _primaryColor : Colors.redAccent),
                       ),
-                      _buildGauge('변경 후', after, afterColor),
+                      const SizedBox(height: 14),
+                      // 변화 뱃지
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: same
+                              ? Colors.grey[200]
+                              : (improved ? _primaryColor.withOpacity(0.12) : Colors.red[50]),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              same ? Icons.remove : (improved ? Icons.trending_up : Icons.trending_down),
+                              size: 16,
+                              color: same ? Colors.grey : (improved ? _primaryColor : Colors.redAccent),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              same
+                                  ? '변화 없음'
+                                  : (improved ? '+$diff% 상승' : '$diff% 하락'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: same ? Colors.grey[600] : (improved ? _primaryColor : Colors.redAccent),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                ],
+                ),
 
-                // 스펙 바
-                const Text('변경된 스펙', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 12),
-                _buildSpecBar('학점', gpa, 4.5, '${gpa.toStringAsFixed(1)} / 4.5'),
-                _buildSpecBar('토익', toeic, 990, '${toeic.round()} / 990'),
-                _buildSpecBar('자격증', cert.toDouble(), 5, '$cert개', maxLabel: '5+'),
-                _buildSpecBar('프로젝트', project.toDouble(), 5, '$project개', maxLabel: '5+'),
-                _buildSpecBar('인턴십', intern.toDouble(), 3, '$intern회', maxLabel: '3+'),
+                const SizedBox(height: 20),
 
-                // AI 분석 텍스트
+                // ── 스펙 항목 카드 ──
+                const Text('스펙 현황', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87)),
+                const SizedBox(height: 10),
+                ...specs.map((s) => _buildSpecItemRow(s.$1, s.$2, s.$3, s.$4, s.$5, s.$6)),
+
+                // ── AI 핵심 조언 ──
                 if (botText.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  const Text('💡 AI 분석', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  MarkdownBody(
-                    data: botText,
-                    softLineBreak: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: const TextStyle(color: Colors.black87, fontSize: 13),
-                      h2: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      h3: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      listBullet: const TextStyle(color: Colors.black87, fontSize: 13),
-                      tableBody: const TextStyle(fontSize: 12),
-                      tableHead: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primaryColor.withOpacity(0.15)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.lightbulb_outline, color: _primaryColor, size: 16),
+                            const SizedBox(width: 6),
+                            Text('핵심 조언', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _primaryColor)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        MarkdownBody(
+                          data: _cleanBotText(botText),
+                          softLineBreak: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.7),
+                            strong: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                            h2: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                            h3: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                            listBullet: const TextStyle(fontSize: 13, color: Colors.black54),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -938,6 +1016,143 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         ],
       ),
     );
+  }
+
+  // 합격률 프로그레스 바
+  Widget _buildRateBar(String label, int percent, Color color) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 52,
+          child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              Container(
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: (percent / 100).clamp(0.0, 1.0),
+                child: Container(
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: Text(
+                      '$percent%',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 스펙 항목 한 줄 카드 (현재 → 조정 후)
+  Widget _buildSpecItemRow(String label, String icon, double before, double after, double max, String unit) {
+    final bool changed = before != after;
+    final bool up = after > before;
+    final Color statusColor = changed ? (up ? _primaryColor : Colors.redAccent) : Colors.grey[400]!;
+    final String statusLabel = changed ? (up ? '개선' : '저하') : '유지';
+    final IconData statusIcon = changed ? (up ? Icons.arrow_upward : Icons.arrow_downward) : Icons.remove;
+
+    String _fmt(double v) {
+      if (unit == '/4.5') return v.toStringAsFixed(1);
+      return v.round().toString();
+    }
+
+    final String beforeText = '${_fmt(before)}$unit';
+    final String afterText = '${_fmt(after)}$unit';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+          ),
+          // 현재 → 조정 후
+          if (changed) ...[
+            Text(beforeText, style: TextStyle(fontSize: 13, color: Colors.grey[500], decoration: TextDecoration.lineThrough)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.arrow_forward, size: 13, color: Colors.black38),
+            ),
+            Text(afterText, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: statusColor)),
+          ] else ...[
+            Text(afterText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+          ],
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(statusIcon, size: 12, color: statusColor),
+                const SizedBox(width: 3),
+                Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // AI 응답 텍스트 정제 헬퍼
+  String _cleanBotText(String text) {
+    final lines = text.split('\n');
+    final result = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+
+      // 마크다운 테이블 제거
+      if (trimmed.startsWith('|') || RegExp(r'^[-|: ]+$').hasMatch(trimmed)) continue;
+
+      // AI 내부 처리 문장 제거 (MCP 툴 호출 과정 등)
+      if (trimmed.contains('company_id') && trimmed.contains('조회')) continue;
+      if (trimmed.startsWith('순서대로')) continue;
+      if (RegExp(r'^(1단계|2단계|3단계|이제\s)').hasMatch(trimmed)) continue;
+      if (trimmed.contains('실행하겠습니다') || trimmed.contains('조회하겠습니다')) continue;
+
+      // ## 헤더에서 불필요한 이모지+제목만 있는 줄 (예: "## 🔮 시뮬레이션 결과") 제거
+      if (RegExp(r'^##\s.*시뮬레이션 결과').hasMatch(trimmed)) continue;
+
+      result.add(line);
+    }
+
+    // 연속된 빈 줄 하나로 압축
+    final collapsed = result.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    return collapsed.isNotEmpty ? collapsed : text;
   }
 
   Widget _buildGauge(String label, int percent, Color color) {

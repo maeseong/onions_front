@@ -117,7 +117,9 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => AiChatScreen(tempSpec: _tempSpec)),
+                        MaterialPageRoute(builder: (_) => AiChatScreen(
+                          tempSpec: _tempSpec.isNotEmpty ? _tempSpec : Map<String, dynamic>.from(dbSpec),
+                        )),
                       );
                     },
                     style: ElevatedButton.styleFrom(

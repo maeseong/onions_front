@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/company_provider.dart';
 import '../repositories/company_repository.dart';
 import '../utils/company_logo.dart';
 
@@ -24,7 +25,7 @@ final aiGapAnalysisProvider = FutureProvider.family<Map<String, dynamic>, String
   },
 );
 
-class AiCompanyDetailScreen extends ConsumerWidget {
+class AiCompanyDetailScreen extends ConsumerStatefulWidget {
   final String companyName;
   final String companyType;
   final String industry;
@@ -44,21 +45,78 @@ class AiCompanyDetailScreen extends ConsumerWidget {
     this.careerUrl,
   });
 
-  String get _typeLabel => switch (companyType.toLowerCase()) {
+  @override
+  ConsumerState<AiCompanyDetailScreen> createState() => _AiCompanyDetailScreenState();
+}
+
+class _AiCompanyDetailScreenState extends ConsumerState<AiCompanyDetailScreen> {
+  int? _companyId;
+  bool _scrapped = false;
+  bool _scrapLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompanyId();
+  }
+
+  Future<void> _loadCompanyId() async {
+    final id = await ref.read(companyRepositoryProvider).getCompanyIdByName(widget.companyName);
+    if (!mounted) return;
+    setState(() => _companyId = id);
+    if (id != null) {
+      final list = await ref.read(companyRepositoryProvider).getScrappedCompanies();
+      if (!mounted) return;
+      setState(() {
+        _scrapped = list.any((c) =>
+            (c['companyId'] ?? c['company_id'])?.toString() == id.toString());
+      });
+    }
+  }
+
+  Future<void> _toggleScrap() async {
+    if (_companyId == null || _scrapLoading) return;
+    setState(() => _scrapLoading = true);
+    try {
+      final repo = ref.read(companyRepositoryProvider);
+      if (_scrapped) {
+        await repo.unscrapCompany(_companyId!);
+        setState(() => _scrapped = false);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('스크랩이 해제됐어요')),
+        );
+      } else {
+        await repo.scrapCompany(_companyId!);
+        setState(() => _scrapped = true);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('스크랩했어요! 기업추천 > 스크랩에서 확인하세요 🔖')),
+        );
+      }
+      ref.invalidate(scrappedCompaniesProvider);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('스크랩 처리에 실패했어요.')),
+      );
+    } finally {
+      setState(() => _scrapLoading = false);
+    }
+  }
+
+  String get _typeLabel => switch (widget.companyType.toLowerCase()) {
     'large' => '대기업',
     'mid' => '중견기업',
     'startup' => '스타트업',
-    _ => companyType,
+    _ => widget.companyType,
   };
 
   String get _description =>
-      '$companyName은 ${industry.isEmpty ? "IT" : industry} 분야의 $_typeLabel입니다.\n'
+      '${widget.companyName}은 ${widget.industry.isEmpty ? "IT" : widget.industry} 분야의 $_typeLabel입니다.\n'
       'AI가 유저의 스펙과 선호 조건을 분석하여 선정한 추천 기업입니다.';
 
   List<String> get _cultureTags {
     final tags = <String>[];
-    final t = companyType.toLowerCase();
-    final ind = industry.toLowerCase();
+    final t = widget.companyType.toLowerCase();
+    final ind = widget.industry.toLowerCase();
 
     if (t == 'startup') {
       tags.addAll(['수평적 문화', '빠른 성장', '자율 근무']);
@@ -77,15 +135,15 @@ class AiCompanyDetailScreen extends ConsumerWidget {
   }
 
   String get _effectiveCareerUrl =>
-      careerUrl ??
-      'https://www.saramin.co.kr/zf_user/search?searchword=${Uri.encodeComponent(companyName)}';
+      widget.careerUrl ??
+      'https://www.saramin.co.kr/zf_user/search?searchword=${Uri.encodeComponent(widget.companyName)}';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    final logoAsset = companyLogoAsset(companyName);
+    final logoAsset = companyLogoAsset(widget.companyName);
     final gapAsync = ref.watch(
-      aiGapAnalysisProvider('$companyName|$companyType|$industry|$region|$matchRate'),
+      aiGapAnalysisProvider('${widget.companyName}|${widget.companyType}|${widget.industry}|${widget.region}|${widget.matchRate}'),
     );
 
     return Scaffold(
@@ -98,7 +156,7 @@ class AiCompanyDetailScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(companyName,
+        title: Text(widget.companyName,
             style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         actions: [
           Container(
@@ -110,16 +168,22 @@ class AiCompanyDetailScreen extends ConsumerWidget {
             child: const Text('AI 추천',
                 style: TextStyle(fontSize: 12, color: Colors.purple, fontWeight: FontWeight.bold)),
           ),
-          // 스크랩 로고 추가
-          IconButton(
-            icon: const Icon(Icons.bookmark_border, color: Colors.black),
-            onPressed: () {
-              // 임시 스크랩 액션
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('AI 추천 기업을 스크랩했습니다')),
-              );
-            },
-          ),
+          _scrapLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _scrapped ? Icons.bookmark : Icons.bookmark_border,
+                    color: _scrapped ? Colors.amber[600] : Colors.black,
+                  ),
+                  onPressed: _companyId != null ? _toggleScrap : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('DB에 등록되지 않은 기업은 스크랩할 수 없어요')),
+                    );
+                  },
+                ),
           const SizedBox(width: 8),
         ],
       ),
@@ -164,9 +228,9 @@ class AiCompanyDetailScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(companyName,
+                            Text(widget.companyName,
                                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                            Text('$_typeLabel · ${industry.isEmpty ? "-" : industry}',
+                            Text('$_typeLabel · ${widget.industry.isEmpty ? "-" : widget.industry}',
                                 style: const TextStyle(color: Colors.black54, fontSize: 13)),
                           ],
                         ),
@@ -176,13 +240,13 @@ class AiCompanyDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   Text(_description,
                       style: const TextStyle(color: Colors.black54, height: 1.6)),
-                  if (region.isNotEmpty) ...[
+                  if (widget.region.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         const Icon(Icons.location_on_outlined, size: 16, color: Colors.black54),
                         const SizedBox(width: 4),
-                        Text(region, style: const TextStyle(color: Colors.black54)),
+                        Text(widget.region, style: const TextStyle(color: Colors.black54)),
                       ],
                     ),
                   ],
@@ -246,18 +310,18 @@ class AiCompanyDetailScreen extends ConsumerWidget {
                           color: primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('$matchRate%',
+                        child: Text('${widget.matchRate}%',
                             style: TextStyle(
                                 color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (reasons.isEmpty)
+                  if (widget.reasons.isEmpty)
                     Text('스펙 및 선호 조건 분석 기반 추천',
                         style: TextStyle(color: Colors.grey[600]))
                   else
-                    ...reasons.map((reason) => Padding(
+                    ...widget.reasons.map((reason) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +384,7 @@ class AiCompanyDetailScreen extends ConsumerWidget {
   Widget _logoFallback(Color primaryColor) {
     return Center(
       child: Text(
-        companyName.isNotEmpty ? companyName.substring(0, 1) : '?',
+        widget.companyName.isNotEmpty ? widget.companyName.substring(0, 1) : '?',
         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor),
       ),
     );

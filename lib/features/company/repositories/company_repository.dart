@@ -175,4 +175,33 @@ class CompanyRepository {
       throw Exception('스크랩 취소 실패');
     }
   }
+
+  // 6. 기업명으로 companyId 조회 (AI 추천 기업 스크랩용)
+  Future<int?> getCompanyIdByName(String name) async {
+    try {
+      final response = await _dio.get(
+        '/api/companies/id',
+        queryParameters: {'name': name},
+        options: await _getHeaders(),
+      );
+      final data = response.data['data'];
+      if (data is Map && data.containsKey('companyId')) {
+        return (data['companyId'] as num).toInt();
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 7. 스크랩한 기업 목록 조회
+  Future<List<Map<String, dynamic>>> getScrappedCompanies() async {
+    final response = await _dio.get(
+      '/api/companies/scrapped',
+      options: await _getHeaders(),
+    );
+    final data = response.data['data'];
+    if (data is List) return List<Map<String, dynamic>>.from(data);
+    return [];
+  }
 }

@@ -5,7 +5,7 @@ import '../providers/company_provider.dart';
 import '../repositories/company_repository.dart';
 import '../utils/company_logo.dart';
 
-class CompanyDetailScreen extends ConsumerWidget {
+class CompanyDetailScreen extends ConsumerStatefulWidget {
   final int companyId;
   final String companyName;
   final String? careerUrl;
@@ -18,10 +18,64 @@ class CompanyDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompanyDetailScreen> createState() => _CompanyDetailScreenState();
+}
+
+class _CompanyDetailScreenState extends ConsumerState<CompanyDetailScreen> {
+  bool _scrapped = false;
+  bool _scrapLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkScrapped();
+  }
+
+  Future<void> _checkScrapped() async {
+    try {
+      final list = await ref.read(companyRepositoryProvider).getScrappedCompanies();
+      if (mounted) {
+        setState(() {
+          _scrapped = list.any((c) =>
+              (c['companyId'] ?? c['company_id'])?.toString() == widget.companyId.toString());
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleScrap() async {
+    if (_scrapLoading) return;
+    setState(() => _scrapLoading = true);
+    try {
+      final repo = ref.read(companyRepositoryProvider);
+      if (_scrapped) {
+        await repo.unscrapCompany(widget.companyId);
+        setState(() => _scrapped = false);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('스크랩이 해제됐어요')),
+        );
+      } else {
+        await repo.scrapCompany(widget.companyId);
+        setState(() => _scrapped = true);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('스크랩했어요! 기업추천 > 스크랩에서 확인하세요 🔖')),
+        );
+      }
+      ref.invalidate(scrappedCompaniesProvider);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('스크랩 처리에 실패했어요.')),
+      );
+    } finally {
+      setState(() => _scrapLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    final detailAsync = ref.watch(companyDetailProvider(companyId));
-    final matchAsync = ref.watch(matchAnalysisProvider(companyId));
+    final detailAsync = ref.watch(companyDetailProvider(widget.companyId));
+    final matchAsync = ref.watch(matchAnalysisProvider(widget.companyId));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -34,34 +88,25 @@ class CompanyDetailScreen extends ConsumerWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          companyName,
+          widget.companyName,
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmark_border, color: Colors.black),
-            onPressed: () async {
-              try {
-                final repository = ref.read(companyRepositoryProvider);
-                // 실제 스크랩 API 연동
-                await repository.scrapCompany(companyId);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('기업을 성공적으로 스크랩했습니다!')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('스크랩 처리에 실패했어요.')),
-                  );
-                }
-              }
-            },
-          ),
+          _scrapLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _scrapped ? Icons.bookmark : Icons.bookmark_border,
+                    color: _scrapped ? Colors.amber[600] : Colors.black,
+                  ),
+                  onPressed: _toggleScrap,
+                ),
         ],
       ),
       body: SingleChildScrollView(
@@ -116,11 +161,11 @@ class CompanyDetailScreen extends ConsumerWidget {
     final hiringSchedule =
         detail['hiringSchedule'] ?? detail['hiring_schedule'] as List? ?? [];
     final cName =
-        detail['companyName'] ?? detail['company_name'] ?? companyName;
+        detail['companyName'] ?? detail['company_name'] ?? widget.companyName;
     final cType = detail['companyType'] ?? detail['company_type'] ?? '';
     final effectiveCareerUrl =
         _asNullableString(detail['careerUrl'] ?? detail['career_url']) ??
-        careerUrl;
+        widget.careerUrl;
     final logoAsset = companyLogoAsset(cName);
 
     return Column(

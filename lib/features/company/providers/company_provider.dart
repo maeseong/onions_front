@@ -13,6 +13,12 @@ class CompanyFilterNotifier extends Notifier<String?> {
   void set(String? type) => state = type;
 }
 
+// 스크랩 기업 목록
+final scrappedCompaniesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final repository = ref.watch(companyRepositoryProvider);
+  return await repository.getScrappedCompanies();
+});
+
 // 추천 기업 목록
 final recommendedCompaniesProvider = FutureProvider<Map<String, dynamic>>((
   ref,

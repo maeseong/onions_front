@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/company_provider.dart';
+import '../repositories/company_repository.dart';
 import '../utils/company_logo.dart';
 import 'ai_company_detail_screen.dart';
 import 'company_detail_screen.dart';
@@ -16,6 +17,7 @@ class CompanyScreen extends ConsumerStatefulWidget {
 class _CompanyScreenState extends ConsumerState<CompanyScreen> {
   String _searchQuery = '';
   bool _showSearch = false;
+  bool _showScrap = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -82,112 +84,193 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
-              children: [null, '대기업', '중견', '스타트업'].asMap().entries.map((
-                entry,
-              ) {
-                final index = entry.key;
-                final type = entry.value;
-                final isSelected = selectedFilter == type;
-                final label = type ?? '전체';
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () =>
-                        ref.read(companyFilterProvider.notifier).set(type),
-                    child: Container(
-                      margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected ? primaryColor : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected ? primaryColor : Colors.grey[300]!,
+              children: [
+                // 기존 타입 필터 (전체/대기업/중견/스타트업)
+                ...[null, '대기업', '중견', '스타트업'].asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final type = entry.value;
+                  final isSelected = !_showScrap && selectedFilter == type;
+                  final label = type ?? '전체';
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _showScrap = false);
+                        ref.read(companyFilterProvider.notifier).set(type);
+                      },
+                      child: Container(
+                        margin: EdgeInsets.only(right: index == 3 ? 8 : 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected ? primaryColor : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? primaryColor : Colors.grey[300]!,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
+                  );
+                }),
+                // 스크랩 필터 버튼
+                GestureDetector(
+                  onTap: () => setState(() => _showScrap = !_showScrap),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _showScrap ? Colors.amber[600] : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _showScrap ? Colors.amber[600]! : Colors.grey[300]!,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _showScrap ? Icons.bookmark : Icons.bookmark_border,
+                          size: 14,
+                          color: _showScrap ? Colors.white : Colors.black54,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '스크랩',
+                          style: TextStyle(
+                            color: _showScrap ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
 
           // 기업 목록 영역
           Expanded(
-            child: companiesAsync.when(
-              loading: () => _buildSkeletonList(primaryColor),
-              error: (e, _) => const Center(
-                child: Text(
-                  '기업 목록을 불러오지 못했어요 😢',
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ),
-              data: (data) {
-                final allCompanies = _asCompanyList(data['companies']);
-                final companies = _searchQuery.isEmpty
-                    ? allCompanies
-                    : allCompanies.where((c) {
-                        final name = (c['companyName'] ?? c['company_name'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        return name.contains(_searchQuery.toLowerCase());
-                      }).toList();
-                final total = companies.length;
-
-                if (companies.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      '조건에 맞는 추천 기업이 없어요 🏢',
-                      style: TextStyle(color: Colors.black54),
+            child: _showScrap
+                ? _buildScrapList(primaryColor)
+                : companiesAsync.when(
+                    loading: () => _buildSkeletonList(primaryColor),
+                    error: (e, _) => const Center(
+                      child: Text(
+                        '기업 목록을 불러오지 못했어요 😢',
+                        style: TextStyle(color: Colors.black54),
+                      ),
                     ),
-                  );
-                }
+                    data: (data) {
+                      final allCompanies = _asCompanyList(data['companies']);
+                      final companies = _searchQuery.isEmpty
+                          ? allCompanies
+                          : allCompanies.where((c) {
+                              final name = (c['companyName'] ?? c['company_name'] ?? '')
+                                  .toString()
+                                  .toLowerCase();
+                              return name.contains(_searchQuery.toLowerCase());
+                            }).toList();
+                      final total = companies.length;
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: companies.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          '총 $total개 기업이 추천됐어요',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 13,
+                      if (companies.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            '조건에 맞는 추천 기업이 없어요 🏢',
+                            style: TextStyle(color: Colors.black54),
                           ),
-                        ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: companies.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Text(
+                                '총 $total개 기업이 추천됐어요',
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            );
+                          }
+                          return _buildCompanyCard(
+                            context,
+                            companies[index - 1],
+                            primaryColor,
+                          );
+                        },
                       );
-                    }
-                    return _buildCompanyCard(
-                      context,
-                      companies[index - 1],
-                      primaryColor,
-                    );
-                  },
-                );
-              },
-            ),
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildScrapList(Color primaryColor) {
+    final scrappedAsync = ref.watch(scrappedCompaniesProvider);
+    return scrappedAsync.when(
+      loading: () => _buildSkeletonList(primaryColor),
+      error: (e, _) => const Center(
+        child: Text('스크랩 목록을 불러오지 못했어요 😢', style: TextStyle(color: Colors.black54)),
+      ),
+      data: (companies) {
+        if (companies.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bookmark_border, size: 56, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                const Text('스크랩한 기업이 없어요', style: TextStyle(fontSize: 16, color: Colors.black54)),
+                const SizedBox(height: 8),
+                const Text('기업 카드의 북마크 버튼을 눌러 저장해보세요', style: TextStyle(fontSize: 13, color: Colors.black38)),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: companies.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  '스크랩한 기업 ${companies.length}개',
+                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                ),
+              );
+            }
+            return _buildCompanyCard(context, companies[index - 1], primaryColor, hideMatchRate: true);
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildCompanyCard(
     BuildContext context,
     Map<String, dynamic> company,
-    Color primaryColor,
-  ) {
+    Color primaryColor, {
+    bool hideMatchRate = false,
+  }) {
+    final companyId = company['companyId'] ?? company['company_id'];
     final matchRate = company['matchRate'] ?? company['match_rate'] ?? 0;
     
     // 💡 매칭률(%)에 따라 뱃지 색상을 결정하는 로직 추가
@@ -218,8 +301,6 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
       company['careerUrl'] ?? company['career_url'],
     );
     final logoAsset = companyLogoAsset(cName);
-
-    final companyId = company['companyId'] ?? company['company_id'];
     final isAiOnly = companyId == null;
 
     return GestureDetector(
@@ -337,24 +418,25 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
                     ],
                   ),
                 ),
-                // 💡 매칭률(%) 뱃지 영역 - 계산된 badgeColor를 사용
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$matchRate%',
-                    style: TextStyle(
-                      color: badgeColor,
-                      fontWeight: FontWeight.bold,
+                // 💡 매칭률(%) 뱃지 - 스크랩 목록에서는 숨김
+                if (!hideMatchRate)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$matchRate%',
+                      style: TextStyle(
+                        color: badgeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -562,6 +644,85 @@ class _CompanyScreenState extends ConsumerState<CompanyScreen> {
         );
       },
       onEnd: () {},
+    );
+  }
+}
+
+// 스크랩 버튼 (상태 독립 관리)
+class _ScrapButton extends ConsumerStatefulWidget {
+  final int companyId;
+  const _ScrapButton({required this.companyId});
+
+  @override
+  ConsumerState<_ScrapButton> createState() => _ScrapButtonState();
+}
+
+class _ScrapButtonState extends ConsumerState<_ScrapButton> {
+  bool _scrapped = false;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkScrapped();
+  }
+
+  Future<void> _checkScrapped() async {
+    try {
+      final list = await ref.read(companyRepositoryProvider).getScrappedCompanies();
+      if (mounted) {
+        setState(() {
+          _scrapped = list.any((c) =>
+              (c['companyId'] ?? c['company_id'])?.toString() == widget.companyId.toString());
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggle() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(companyRepositoryProvider);
+      if (_scrapped) {
+        await repo.unscrapCompany(widget.companyId);
+      } else {
+        await repo.scrapCompany(widget.companyId);
+      }
+      setState(() => _scrapped = !_scrapped);
+      // 스크랩 목록 캐시 갱신
+      ref.invalidate(scrappedCompaniesProvider);
+    } catch (_) {
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _toggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: _scrapped ? Colors.amber[600] : Colors.grey[100],
+          shape: BoxShape.circle,
+        ),
+        child: _loading
+            ? SizedBox(
+                width: 16, height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _scrapped ? Colors.white : Colors.grey,
+                ),
+              )
+            : Icon(
+                _scrapped ? Icons.bookmark : Icons.bookmark_border,
+                size: 18,
+                color: _scrapped ? Colors.white : Colors.grey[500],
+              ),
+      ),
     );
   }
 }
